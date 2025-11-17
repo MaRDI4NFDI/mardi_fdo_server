@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  mardi-fdo-server:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      # Mount source code for development (optional)
+      - ../app:/app/app
+      - ../fdo_schemas:/app/fdo_schemas
+      - ../tests:/app/tests
+    restart: unless-stopped

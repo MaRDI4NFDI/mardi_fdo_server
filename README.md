@@ -19,6 +19,20 @@ uvicorn mardi_fdo_server:app --reload --port 8000
 
 Request an entity: `curl http://localhost:8000/fdo/Q123456`.
 
+## Docker
+
+The project can be run using Docker for easy deployment and development.
+
+1. Build the image:
+   ```bash
+   docker build -f docker/Dockerfile -t mardi-fdo-server .
+   ```
+
+2. Run the container:
+   ```bash
+   docker run -p 8000:8000 mardi-fdo-server
+   ```
+
 ## Deployment Notes
 
 - Run the container/pod alongside the existing MaRDI stack
