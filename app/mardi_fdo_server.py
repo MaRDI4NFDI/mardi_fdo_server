@@ -1,0 +1,174 @@
+"""
+Minimal FastAPI service exposing FAIR Digital Objects (FDOs) for MaRDI QIDs.
+"""
+
+from functools import lru_cache
+from typing import Any, Dict
+
+import httpx
+from fastapi import FastAPI, HTTPException, Response
+from app.mardi_item_helper import BASE_IRI
+from fdo_schemas.publication import build_scholarly_article_payload
+
+MW_API = "https://portal.mardi4nfdi.de/w/api.php"
+JSONLD_CONTEXT = [
+    "https://w3id.org/fdo/context/v1",
+    {
+        "schema": "https://schema.org/",
+        "prov": "http://www.w3.org/ns/prov#",
+        "fdo": "https://w3id.org/fdo/vocabulary/",
+        "kernel": "fdo:kernel",
+        "access": "fdo:access",
+        "accessURL": "fdo:accessURL",
+        "mediaType": "fdo:mediaType",
+    },
+]
+
+app = FastAPI(
+    title="MaRDI FDO façade",
+    description="Lightweight FastAPI service returning minimal FDO payloads for MaRDI QIDs.",
+    version="0.1.0",
+)
+
+
+@lru_cache(maxsize=2048)
+def fetch_entity(qid: str) -> Dict[str, Any]:
+    """Look up a QID via the MediaWiki API.
+
+    Args:
+        qid: Identifier such as ``Q123``.
+
+    Returns:
+        Parsed entity JSON returned by the MediaWiki service.
+
+    Raises:
+        HTTPException: If the QID does not exist in the backend.
+    """
+    params = {
+        "action": "wbgetentities",
+        "format": "json",
+        "ids": qid,
+        "props": "labels|descriptions|claims|info",
+        "languages": "en",
+    }
+    resp = httpx.get(MW_API, params=params, timeout=5)
+    resp.raise_for_status()
+    entities = resp.json().get("entities", {})
+    if qid not in entities:
+        raise HTTPException(status_code=404, detail=f"QID {qid} not found")
+    return entities[qid]
+
+
+def guess_type_from_claims(claims: Dict[str, Any]) -> str:
+    """Infer an approximate type for the entity from P31.
+
+    Args:
+        claims: MediaWiki claims block.
+
+    Returns:
+        Identifier representing the entity type.
+    """
+    instance_stmt = claims.get("P31", [])
+    if instance_stmt:
+        mainsnak = instance_stmt[0].get("mainsnak", {})
+        datavalue = mainsnak.get("datavalue", {})
+        value = datavalue.get("value", {})
+        instance_qid = value.get("id", "")
+        if instance_qid == "Q56887":
+            return "schema:ScholarlyArticle"
+        return instance_qid or "mardi:UnknownType"
+    return "mardi:UnknownType"
+
+
+def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """Route to publication or generic FDO transformers based on type.
+
+    Args:
+        qid: Identifier of the entity.
+        entity: Raw entity JSON.
+
+    Returns:
+        ``FDOResponse`` tailored to the entity type.
+    """
+    claims = entity.get("claims", {})
+    entity_type = guess_type_from_claims(claims)
+    if entity_type == "schema:ScholarlyArticle":
+        return to_fdo_publication(qid, entity)
+    return to_fdo_minimal(qid, entity)
+
+
+def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a schema.org ScholarlyArticle-styled FDO payload.
+
+    Args:
+        qid: Identifier of the publication.
+        entity: Raw entity JSON.
+
+    Returns:
+        ``FDOResponse`` enriched with schema.org publication fields.
+    """
+    return {
+        "@context": JSONLD_CONTEXT,
+        "@id": BASE_IRI + qid,
+        "@type": "schema:ScholarlyArticle",
+        "kernel": build_scholarly_article_payload(qid, entity),
+        "access": {
+            "accessURL": f"{BASE_IRI}{qid}",
+            "mediaType": "application/ld+json",
+        },
+        "prov:generatedAtTime": entity.get("modified", ""),
+        "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+    }
+
+
+def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """Transform an arbitrary entity into a minimal FDO payload.
+
+    Args:
+        qid: Identifier of the entity.
+        entity: Raw entity JSON.
+
+    Returns:
+        ``FDOResponse`` containing kernel/access/provenance blocks.
+    """
+    label = entity.get("labels", {}).get("en", {}).get("value", qid)
+    description = entity.get("descriptions", {}).get("en", {}).get("value", "")
+    entity_type = guess_type_from_claims(entity.get("claims", {}))
+    return {
+        "@context": JSONLD_CONTEXT,
+        "@id": BASE_IRI + qid,
+        "@type": entity_type,
+        "kernel": {
+            "@type": entity_type,
+            "name": label,
+            "description": description,
+        },
+        "access": {
+            "accessURL": f"{BASE_IRI}{qid}",
+            "mediaType": "application/vnd.mardi.entity+json",
+        },
+        "prov:generatedAtTime": entity.get("modified", ""),
+        "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+    }
+
+
+@app.get("/fdo/{qid}")
+async def get_fdo(qid: str) -> Dict[str, Any]:
+    """Return a minimal FDO view for a MaRDI entity."""
+    qid = qid.upper()
+    if not qid.startswith("Q"):
+        raise HTTPException(status_code=400, detail="QIDs must start with 'Q'")
+    entity = fetch_entity(qid)
+    return to_fdo(qid, entity)
+
+
+@app.get("/health")
+async def health() -> Dict[str, str]:
+    """Return service health status."""
+    return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> Response:
+    """Return empty favicon response to silence 404s."""
+    return Response(content=b"", media_type="image/x-icon", status_code=204)
