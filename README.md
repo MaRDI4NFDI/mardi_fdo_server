@@ -11,6 +11,13 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+```bash
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+python -m venv .venv
+.\venv\Scripts\activate.ps1
+pip install -r requirements.txt
+```
+
 ## Usage
 
 ```bash

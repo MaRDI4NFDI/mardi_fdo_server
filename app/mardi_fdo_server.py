@@ -9,20 +9,10 @@ import httpx
 from fastapi import FastAPI, HTTPException, Response
 from app.mardi_item_helper import BASE_IRI
 from fdo_schemas.publication import build_scholarly_article_payload
+from fdo_schemas.author import build_author_payload
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
-JSONLD_CONTEXT = [
-    "https://w3id.org/fdo/context/v1",
-    {
-        "schema": "https://schema.org/",
-        "prov": "http://www.w3.org/ns/prov#",
-        "fdo": "https://w3id.org/fdo/vocabulary/",
-        "kernel": "fdo:kernel",
-        "access": "fdo:access",
-        "accessURL": "fdo:accessURL",
-        "mediaType": "fdo:mediaType",
-    },
-]
+from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT
 
 app = FastAPI(
     title="MaRDI FDO façade",
@@ -74,9 +64,7 @@ def guess_type_from_claims(claims: Dict[str, Any]) -> str:
         datavalue = mainsnak.get("datavalue", {})
         value = datavalue.get("value", {})
         instance_qid = value.get("id", "")
-        if instance_qid == "Q56887":
-            return "schema:ScholarlyArticle"
-        return instance_qid or "mardi:UnknownType"
+        return QID_TYPE_MAP.get(instance_qid, instance_qid or "mardi:UnknownType")
     return "mardi:UnknownType"
 
 
@@ -92,9 +80,11 @@ def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """
     claims = entity.get("claims", {})
     entity_type = guess_type_from_claims(claims)
-    if entity_type == "schema:ScholarlyArticle":
-        return to_fdo_publication(qid, entity)
-    return to_fdo_minimal(qid, entity)
+    
+    # Local dispatcher mapping types to handler functions
+    # Defined here or at module level to map strings to functions
+    handler = TYPE_HANDLER_MAP.get(entity_type, to_fdo_minimal)
+    return handler(qid, entity)
 
 
 def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
@@ -112,6 +102,30 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         "@id": BASE_IRI + qid,
         "@type": "schema:ScholarlyArticle",
         "kernel": build_scholarly_article_payload(qid, entity),
+        "access": {
+            "accessURL": f"{BASE_IRI}{qid}",
+            "mediaType": "application/ld+json",
+        },
+        "prov:generatedAtTime": entity.get("modified", ""),
+        "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+    }
+
+
+def to_fdo_author(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a schema.org Person-styled FDO payload.
+
+    Args:
+        qid: Identifier of the person.
+        entity: Raw entity JSON.
+
+    Returns:
+        ``FDOResponse`` enriched with schema.org person fields.
+    """
+    return {
+        "@context": JSONLD_CONTEXT,
+        "@id": BASE_IRI + qid,
+        "@type": "schema:Person",
+        "kernel": build_author_payload(qid, entity),
         "access": {
             "accessURL": f"{BASE_IRI}{qid}",
             "mediaType": "application/ld+json",
@@ -151,6 +165,11 @@ def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         "prov:wasAttributedTo": "MaRDI Knowledge Graph",
     }
 
+# Local dispatcher mapping types to handler functions
+TYPE_HANDLER_MAP = {
+    "schema:ScholarlyArticle": to_fdo_publication,
+    "schema:Person": to_fdo_author,
+}
 
 @app.get("/fdo/{qid}")
 async def get_fdo(qid: str) -> Dict[str, Any]:
