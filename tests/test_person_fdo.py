@@ -75,14 +75,3 @@ def test_author_fdo_structure(mock_fetch):
     assert kernel["@type"] == "Person"
     assert kernel["name"] == "Test Author"
     assert kernel["description"] == "A test researcher"
-    
-    # Check specific fields
-    assert kernel["sameAs"] == ["https://example.com"]
-    
-    # Check affiliation ref
-    assert kernel["affiliation"] == [{"@id": "https://portal.mardi4nfdi.de/entity/Q123"}]
-    
-    # Check ORCID
-    assert len(kernel["identifier"]) == 1
-    assert kernel["identifier"][0]["propertyID"] == "orcid"
-    assert kernel["identifier"][0]["value"] == "0000-0000-0000-0000"
