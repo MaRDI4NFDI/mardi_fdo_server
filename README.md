@@ -21,7 +21,7 @@ pip install -r requirements.txt
 ## Usage
 
 ```bash
-uvicorn mardi_fdo_server:app --reload --port 8000
+uvicorn app.mardi_fdo_server:app --reload --port 8000 
 ```
 
 Request an entity: `curl http://localhost:8000/fdo/Q123456`.

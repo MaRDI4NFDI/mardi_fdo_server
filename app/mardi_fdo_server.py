@@ -7,6 +7,8 @@ from typing import Any, Dict
 
 import httpx
 from fastapi import FastAPI, HTTPException, Response
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 from app.mardi_item_helper import BASE_IRI
 from fdo_schemas.publication import build_scholarly_article_payload
 from fdo_schemas.author import build_author_payload
@@ -19,6 +21,8 @@ app = FastAPI(
     description="Lightweight FastAPI service returning minimal FDO payloads for MaRDI QIDs.",
     version="0.1.0",
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 @lru_cache(maxsize=2048)
@@ -170,6 +174,58 @@ TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
     "schema:Person": to_fdo_author,
 }
+
+
+@app.get("/", response_class=HTMLResponse)
+async def root() -> HTMLResponse:
+    """Render a greeting with a usage hint on the landing page.
+
+    Returns:
+        HTMLResponse: Greeting and sample FDO link with styled background.
+    """
+    body = """
+    <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            color: #0b132b;
+            background: url('/static/background_mardi_api.png') no-repeat center center fixed;
+            background-size: cover;
+          }
+          .overlay {
+            background-color: rgba(255, 255, 255, 0.85);
+            max-width: 720px;
+            margin: 12vh auto;
+            padding: 32px 36px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+          }
+          a {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 600;
+          }
+          a:hover {
+            text-decoration: underline;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="overlay">
+          <p>Hello, this is the MaRDI FDO service.</p>
+          <p>
+            This API delivers FAIR Digital Object payloads for MaRDI QIDs.
+            Try <a href="/fdo/Q2055155">/fdo/Q2055155</a>.
+          </p>
+        </div>
+      </body>
+    </html>
+    """
+    return HTMLResponse(content=body)
+
 
 @app.get("/fdo/{qid}")
 async def get_fdo(qid: str) -> Dict[str, Any]:
