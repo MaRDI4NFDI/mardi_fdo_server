@@ -4,7 +4,7 @@ Helper utilities for extracting structured data from MaRDI/Wikibase entities.
 
 from typing import Any, Dict, List, Optional
 
-BASE_IRI = "https://portal.mardi4nfdi.de/entity/"
+from app.fdo_config import ENTITY_IRI
 
 
 def extract_item_ids(claims: Dict[str, Any], prop: str) -> List[str]:
@@ -77,4 +77,4 @@ def schema_refs_from_ids(ids: List[str]) -> List[Dict[str, str]]:
     Returns:
         List of dictionaries with ``@id`` references.
     """
-    return [{"@id": BASE_IRI + _id} for _id in ids]
+    return [{"@id": ENTITY_IRI + _id} for _id in ids]

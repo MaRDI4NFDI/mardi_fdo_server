@@ -9,12 +9,11 @@ import httpx
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
-from app.mardi_item_helper import BASE_IRI
-from fdo_schemas.publication import build_scholarly_article_payload
+from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
-from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT
+from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI
 
 app = FastAPI(
     title="MaRDI FDO façade",
@@ -92,26 +91,47 @@ def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-    """Return a schema.org ScholarlyArticle-styled FDO payload.
 
-    Args:
-        qid: Identifier of the publication.
-        entity: Raw entity JSON.
+    fdo_id = f"{FDO_IRI}{qid}"
+    access_id = f"{FDO_ACCESS_IRI}{qid}"
 
-    Returns:
-        ``FDOResponse`` enriched with schema.org publication fields.
-    """
+    created = entity.get("created")
+    modified = entity.get("modified")
+    created_or_modified = created if created else modified if modified else ""
+
     return {
-        "@context": JSONLD_CONTEXT,
-        "@id": BASE_IRI + qid,
-        "@type": "schema:ScholarlyArticle",
-        "kernel": build_scholarly_article_payload(qid, entity),
-        "access": {
-            "accessURL": f"{BASE_IRI}{qid}",
-            "mediaType": "application/ld+json",
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+
+        "kernel": {
+            "@id": fdo_id,
+            "digitalObjectType": "https://types.mardi4nfdi.de/ScholarlyArticle/v1",
+            "created": created_or_modified,
+            "modified": modified or "",
+            "access": [{"@id": access_id}]
         },
-        "prov:generatedAtTime": entity.get("modified", ""),
-        "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+
+        "profile": build_scholarly_article_profile(qid, entity),
+
+        "access": {
+            "@id": access_id,
+            "accessURL": f"{fdo_id}?format=jsonld",
+            "mediaType": "application/ld+json"
+        },
+
+        "provenance": {
+            "prov:generatedAtTime": modified or "",
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
+        }
     }
 
 
@@ -127,11 +147,11 @@ def to_fdo_author(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """
     return {
         "@context": JSONLD_CONTEXT,
-        "@id": BASE_IRI + qid,
+        "@id": ENTITY_IRI + qid,
         "@type": "schema:Person",
         "kernel": build_author_payload(qid, entity),
         "access": {
-            "accessURL": f"{BASE_IRI}{qid}",
+            "accessURL": f"{ENTITY_IRI}{qid}",
             "mediaType": "application/ld+json",
         },
         "prov:generatedAtTime": entity.get("modified", ""),
@@ -154,7 +174,7 @@ def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     entity_type = guess_type_from_claims(entity.get("claims", {}))
     return {
         "@context": JSONLD_CONTEXT,
-        "@id": BASE_IRI + qid,
+        "@id": ENTITY_IRI + qid,
         "@type": entity_type,
         "kernel": {
             "@type": entity_type,
@@ -162,7 +182,7 @@ def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
             "description": description,
         },
         "access": {
-            "accessURL": f"{BASE_IRI}{qid}",
+            "accessURL": f"{ENTITY_IRI}{qid}",
             "mediaType": "application/vnd.mardi.entity+json",
         },
         "prov:generatedAtTime": entity.get("modified", ""),
