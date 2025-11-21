@@ -16,6 +16,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY fdo_schemas ./fdo_schemas
 COPY tests ./tests
+COPY static ./static
 
 # Expose the port
 EXPOSE 8000

@@ -11,7 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from app.mardi_item_helper import BASE_IRI
 from fdo_schemas.publication import build_scholarly_article_payload
-from fdo_schemas.author import build_author_payload
+from fdo_schemas.person import build_author_payload
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
 from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT
