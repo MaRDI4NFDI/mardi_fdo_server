@@ -14,11 +14,14 @@ from app.mardi_item_helper import (
 
 
 def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-
-    label = entity.get("labels", {}).get("en", {}).get("value", qid)
-    description = entity.get("descriptions", {}).get("en", {}).get("value", "")
     claims = entity.get("claims", {})
 
+    arxiv_id = extract_string_claim(claims, "P21")
+    pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None
+
+    # build the profile as before
+    label = entity.get("labels", {}).get("en", {}).get("value", qid)
+    description = entity.get("descriptions", {}).get("en", {}).get("value", "")
     author_ids = extract_item_ids(claims, "P16")
     citation_ids = extract_item_ids(claims, "P223")
     container_ids = extract_item_ids(claims, "P1433")
@@ -27,7 +30,6 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
     license_ids = extract_item_ids(claims, "P275")
     language_ids = extract_item_ids(claims, "P407")
     keyword_ids = extract_item_ids(claims, "1450")
-
     publication_date = extract_time_claim(claims, "P28") or ""
     doi_value = extract_string_claim(claims, "P27") or ""
     page_range = extract_string_claim(claims, "P304")
@@ -40,8 +42,6 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
     profile = {
         "@context": "https://schema.org",
         "@type": "ScholarlyArticle",
-
-        # Schema.org identity stays in the Wikibase namespace
         "@id": f"{ENTITY_IRI}{qid}",
         "name": label,
         "headline": label,
@@ -66,7 +66,7 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
             "@type": "PropertyValue",
             "propertyID": "doi",
             "value": doi_value,
-            "url": f"https://doi.org/{doi_value}"
+            "url": f"https://doi.org/{doi_value}",
         }
         profile["sameAs"] = [f"https://doi.org/{doi_value}"]
 
@@ -86,4 +86,14 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
     if citation_ids:
         profile["citation"] = schema_refs_from_ids(citation_ids)
 
-    return profile
+    if pdf_url:
+        profile["encoding"] = [
+            {
+                "@type": "MediaObject",
+                "contentUrl": pdf_url,
+                "encodingFormat": "application/pdf"
+            }
+        ]
+
+    return profile, pdf_url
+

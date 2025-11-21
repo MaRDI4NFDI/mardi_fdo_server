@@ -91,13 +91,35 @@ def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-
     fdo_id = f"{FDO_IRI}{qid}"
-    access_id = f"{FDO_ACCESS_IRI}{qid}"
+    access_json_id = f"{FDO_ACCESS_IRI}{qid}-jsonld"
+    access_pdf_id = f"{FDO_ACCESS_IRI}{qid}-pdf"
 
     created = entity.get("created")
     modified = entity.get("modified")
     created_or_modified = created if created else modified if modified else ""
+
+    profile, pdf_url = build_scholarly_article_profile(qid, entity)
+
+    access_list = [{"@id": access_json_id}]
+    if pdf_url:
+        access_list.append({"@id": access_pdf_id})
+
+    access_records = [
+        {
+            "@id": access_json_id,
+            "accessURL": f"{fdo_id}?format=jsonld",
+            "mediaType": "application/ld+json",
+        }
+    ]
+    if pdf_url:
+        access_records.append(
+            {
+                "@id": access_pdf_id,
+                "accessURL": pdf_url,
+                "mediaType": "application/pdf",
+            }
+        )
 
     return {
         "@context": [
@@ -105,33 +127,24 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
             {
                 "schema": "https://schema.org/",
                 "prov": "http://www.w3.org/ns/prov#",
-                "fdo": "https://w3id.org/fdo/vocabulary/"
-            }
+                "fdo": "https://w3id.org/fdo/vocabulary/",
+            },
         ],
-
         "@id": fdo_id,
         "@type": "DigitalObject",
-
         "kernel": {
             "@id": fdo_id,
             "digitalObjectType": "https://types.mardi4nfdi.de/ScholarlyArticle/v1",
             "created": created_or_modified,
             "modified": modified or "",
-            "access": [{"@id": access_id}]
+            "access": access_list,
         },
-
-        "profile": build_scholarly_article_profile(qid, entity),
-
-        "access": {
-            "@id": access_id,
-            "accessURL": f"{fdo_id}?format=jsonld",
-            "mediaType": "application/ld+json"
-        },
-
+        "profile": profile,
+        "access": access_records,
         "provenance": {
             "prov:generatedAtTime": modified or "",
-            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
-        }
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+        },
     }
 
 
