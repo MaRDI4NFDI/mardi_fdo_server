@@ -118,6 +118,9 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
                 "@id": access_pdf_id,
                 "accessURL": pdf_url,
                 "mediaType": "application/pdf",
+                "originalFilename": f"arxiv_1234.{qid}.pdf",
+                "componentId": f"doip:bitstream/{qid}/{qid}_fulltext.pdf",
+                "s3Key": f"{qid}/{qid}_fulltext.pdf",
             }
         )
 
