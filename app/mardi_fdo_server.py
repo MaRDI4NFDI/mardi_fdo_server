@@ -9,11 +9,14 @@ import httpx
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+
+from app.mardi_item_helper import normalize_created_modified
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
+from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
-from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI
+KERNEL_VERSION = "v1"
 
 app = FastAPI(
     title="MaRDI FDO façade",
@@ -92,18 +95,28 @@ def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
 def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     fdo_id = f"{FDO_IRI}{qid}"
-
-    created = entity.get("created") or ""
-    modified = entity.get("modified") or created
-
+    created, modified = normalize_created_modified(entity)
     profile, pdf_url = build_scholarly_article_profile(qid, entity)
 
     reps = []
     if pdf_url:
         reps.append({
-            "@id": f"{FDO_IRI}{qid}_fulltext",
+            "@id": f"{FDO_IRI}{qid}_FULLTEXT",
             "mediaType": "application/pdf"
         })
+
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "https://schema.org/ScholarlyArticle",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+    }
+    if created is not None:
+        kernel["created"] = created
+    if reps:
+        kernel["fdo:hasRepresentation"] = reps
 
     return {
         "@context": [
@@ -116,13 +129,7 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         ],
         "@id": fdo_id,
         "@type": "DigitalObject",
-        "kernel": {
-            "@id": fdo_id,
-            "digitalObjectType": "https://types.mardi4nfdi.de/ScholarlyArticle/v1",
-            "created": created,
-            "modified": modified,
-            "hasRepresentation": reps
-        },
+        "kernel": kernel,
         "profile": profile,
         "provenance": {
             "prov:generatedAtTime": modified,
@@ -130,11 +137,22 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
 
-def to_fdo_publication_bitstream(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-    fdo_id = f"{FDO_IRI}{qid}_fulltext"
 
-    created = entity.get("created") or ""
-    modified = entity.get("modified") or created
+def to_fdo_publication_bitstream(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    fdo_id = f"{FDO_IRI}{qid}_FULLTEXT"
+    created, modified = normalize_created_modified(entity)
+
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "http://id.loc.gov/ontologies/premis#File",
+        "primaryIdentifier": f"mardi:{qid}_FULLTEXT",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+        "primaryMediaType": "application/pdf"
+    }
+    if created is not None:
+        kernel["created"] = created
 
     return {
         "@context": [
@@ -146,13 +164,7 @@ def to_fdo_publication_bitstream(qid: str, entity: Dict[str, Any]) -> Dict[str, 
         ],
         "@id": fdo_id,
         "@type": "DigitalObject",
-        "kernel": {
-            "@id": fdo_id,
-            "digitalObjectType": "http://id.loc.gov/ontologies/premis#File",
-            "created": created,
-            "modified": modified,
-            "primaryMediaType": "application/pdf"
-        },
+        "kernel": kernel,
         "provenance": {
             "prov:generatedAtTime": modified,
             "prov:wasAttributedTo": "MaRDI Knowledge Graph"

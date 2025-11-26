@@ -2,7 +2,7 @@
 Helper utilities for extracting structured data from MaRDI/Wikibase entities.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.fdo_config import ENTITY_IRI
 
@@ -78,3 +78,14 @@ def schema_refs_from_ids(ids: List[str]) -> List[Dict[str, str]]:
         List of dictionaries with ``@id`` references.
     """
     return [{"@id": ENTITY_IRI + _id} for _id in ids]
+
+
+def normalize_created_modified(entity: Dict[str, Any]) -> Tuple[Optional[str], str]:
+    created = entity.get("created") or None
+    modified = entity.get("modified") or None
+    if modified is None and created is not None:
+        modified = created
+    if modified is None:
+        from datetime import datetime, timezone
+        modified = datetime.now(timezone.utc).isoformat()
+    return created, modified
