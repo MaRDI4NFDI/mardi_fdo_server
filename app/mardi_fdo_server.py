@@ -130,6 +130,35 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         }
     }
 
+def to_fdo_publication_bitstream(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    fdo_id = f"{FDO_IRI}{qid}_fulltext"
+
+    created = entity.get("created") or ""
+    modified = entity.get("modified") or created
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+        "kernel": {
+            "@id": fdo_id,
+            "digitalObjectType": "http://id.loc.gov/ontologies/premis#File",
+            "created": created,
+            "modified": modified,
+            "primaryMediaType": "application/pdf"
+        },
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
+        }
+    }
+
 def to_fdo_author(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """Return a schema.org Person-styled FDO payload.
 
@@ -242,14 +271,20 @@ async def root() -> HTMLResponse:
     return HTMLResponse(content=body)
 
 
-@app.get("/fdo/{qid}")
-async def get_fdo(qid: str) -> Dict[str, Any]:
-    """Return a minimal FDO view for a MaRDI entity."""
-    qid = qid.upper()
-    if not qid.startswith("Q"):
-        raise HTTPException(status_code=400, detail="QIDs must start with 'Q'")
-    entity = fetch_entity(qid)
-    return to_fdo(qid, entity)
+@app.get("/fdo/{object_id}")
+def get_fdo(object_id: str):
+    oid = object_id.upper()
+
+    if oid.startswith("Q") and oid.endswith("_FULLTEXT"):
+        qid = oid[:-9]  # strip "_FULLTEXT"
+        entity = fetch_entity(qid)
+        return to_fdo_publication_bitstream(qid, entity)
+
+    if oid.startswith("Q"):
+        entity = fetch_entity(oid)
+        return to_fdo_publication(oid, entity)
+
+    raise HTTPException(status_code=400, detail="invalid FDO identifier")
 
 
 @app.get("/health")
