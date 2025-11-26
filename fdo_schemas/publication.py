@@ -2,7 +2,7 @@
 Schema.org ScholarlyArticle helpers for MaRDI FDO prototype.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.fdo_config import ENTITY_IRI
 from app.mardi_item_helper import (
@@ -13,13 +13,12 @@ from app.mardi_item_helper import (
 )
 
 
-def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
     claims = entity.get("claims", {})
 
     arxiv_id = extract_string_claim(claims, "P21")
     pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None
 
-    # build the profile as before
     label = entity.get("labels", {}).get("en", {}).get("value", qid)
     description = entity.get("descriptions", {}).get("en", {}).get("value", "")
     author_ids = extract_item_ids(claims, "P16")
@@ -47,7 +46,7 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
         "headline": label,
         "description": description,
         "url": f"{ENTITY_IRI}{qid}",
-        "datePublished": publication_date,
+        "datePublished": publication_date
     }
 
     if author_ids:
@@ -59,14 +58,14 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
     if subject_ids:
         profile["about"] = schema_refs_from_ids(subject_ids)
     if language_ids:
-        profile["inLanguage"] = [f"{ENTITY_IRI}{lang}" for lang in language_ids]
+        profile["inLanguage"] = [f"{ENTITY_IRI}{lid}" for lid in language_ids]
 
     if doi_value:
         profile["identifier"] = {
             "@type": "PropertyValue",
             "propertyID": "doi",
             "value": doi_value,
-            "url": f"https://doi.org/{doi_value}",
+            "url": f"https://doi.org/{doi_value}"
         }
         profile["sameAs"] = [f"https://doi.org/{doi_value}"]
 
@@ -76,7 +75,6 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
         profile["pageEnd"] = page_end
     if page_range:
         profile["pagination"] = page_range
-
     if license_ids:
         profile["license"] = schema_refs_from_ids(license_ids)
     if comment:
@@ -85,15 +83,6 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Dict[st
         profile["keyword"] = schema_refs_from_ids(keyword_ids)
     if citation_ids:
         profile["citation"] = schema_refs_from_ids(citation_ids)
-
-    if pdf_url:
-        profile["encoding"] = [
-            {
-                "@type": "MediaObject",
-                "contentUrl": pdf_url,
-                "encodingFormat": "application/pdf"
-            }
-        ]
 
     return profile, pdf_url
 
