@@ -55,23 +55,32 @@ SAMPLE_PERSON_ENTITY = {
 
 @patch("app.mardi_fdo_server.fetch_entity")
 def test_author_fdo_structure(mock_fetch):
-    """Test that a Person entity is correctly transformed to an FDO."""
-    # Setup mock
     mock_fetch.return_value = SAMPLE_PERSON_ENTITY
-    
-    # Execute
+
     resp = client.get("/fdo/Q999999")
-    
-    # Verify
     assert resp.status_code == 200
     data = resp.json()
-    
-    # Check top-level FDO fields
+
+    # top-level FDO
     assert data["@type"] == "schema:Person"
-    assert data["@id"] == "https://portal.mardi4nfdi.de/entity/Q999999"
-    
-    # Check kernel (schema.org payload)
+    assert data["@id"] == "https://fdo.portal.mardi4nfdi.de/fdo/Q999999"
+
+    # kernel
     kernel = data["kernel"]
-    assert kernel["@type"] == "Person"
-    assert kernel["name"] == "Test Author"
-    assert kernel["description"] == "A test researcher"
+    assert kernel["@id"] == data["@id"]
+    assert kernel["digitalObjectType"] == "https://schema.org/Person"
+    assert kernel["primaryIdentifier"] == "mardi:Q999999"
+    assert kernel["kernelVersion"] == "v1"
+    assert kernel["immutable"] is True
+
+    # profile
+    profile = data["profile"]
+    assert profile["@type"] == "Person"
+    assert profile["@id"] == "https://portal.mardi4nfdi.de/entity/Q999999"
+    assert profile["name"] == "Test Author"
+    assert isinstance(profile["name"], str)
+
+    # provenance
+    prov = data["provenance"]
+    assert "prov:generatedAtTime" in prov
+    assert "prov:wasAttributedTo" in prov
