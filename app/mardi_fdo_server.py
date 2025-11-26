@@ -10,7 +10,7 @@ from fastapi import FastAPI, HTTPException, Response
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.mardi_item_helper import normalize_created_modified
+from app.mardi_item_helper import normalize_created_modified, extract_item_ids
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI
@@ -171,28 +171,41 @@ def to_fdo_publication_bitstream(qid: str, entity: Dict[str, Any]) -> Dict[str, 
         }
     }
 
-def to_fdo_author(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-    """Return a schema.org Person-styled FDO payload.
+def to_fdo_person(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    fdo_id = f"{FDO_IRI}{qid}"
+    created, modified = normalize_created_modified(entity)
+    profile = build_author_payload(qid, entity)
 
-    Args:
-        qid: Identifier of the person.
-        entity: Raw entity JSON.
-
-    Returns:
-        ``FDOResponse`` enriched with schema.org person fields.
-    """
-    return {
-        "@context": JSONLD_CONTEXT,
-        "@id": ENTITY_IRI + qid,
-        "@type": "schema:Person",
-        "kernel": build_author_payload(qid, entity),
-        "access": {
-            "accessURL": f"{ENTITY_IRI}{qid}",
-            "mediaType": "application/ld+json",
-        },
-        "prov:generatedAtTime": entity.get("modified", ""),
-        "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "https://schema.org/Person",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
     }
+    if created is not None:
+        kernel["created"] = created
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+        "@id": fdo_id,
+        "@type": "schema:Person",
+        "kernel": kernel,
+        "profile": profile,
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+        },
+    }
+
 
 
 def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
@@ -228,7 +241,7 @@ def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 # Local dispatcher mapping types to handler functions
 TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
-    "schema:Person": to_fdo_author,
+    "schema:Person": to_fdo_person,
 }
 
 
@@ -287,17 +300,18 @@ async def root() -> HTMLResponse:
 def get_fdo(object_id: str):
     oid = object_id.upper()
 
+    # bitstream for PDF retrieval are handled separately
     if oid.startswith("Q") and oid.endswith("_FULLTEXT"):
-        qid = oid[:-9]  # strip "_FULLTEXT"
+        qid = oid[:-9]
         entity = fetch_entity(qid)
         return to_fdo_publication_bitstream(qid, entity)
 
+    # everything else routed through to_fdo dispatcher
     if oid.startswith("Q"):
         entity = fetch_entity(oid)
-        return to_fdo_publication(oid, entity)
+        return to_fdo(oid, entity)
 
     raise HTTPException(status_code=400, detail="invalid FDO identifier")
-
 
 @app.get("/health")
 async def health() -> Dict[str, str]:
