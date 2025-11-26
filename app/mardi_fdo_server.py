@@ -1,7 +1,7 @@
 """
 Minimal FastAPI service exposing FAIR Digital Objects (FDOs) for MaRDI QIDs.
 """
-
+import re
 from functools import lru_cache
 from typing import Any, Dict
 
@@ -300,15 +300,29 @@ async def root() -> HTMLResponse:
 def get_fdo(object_id: str):
     oid = object_id.upper()
 
+    _QID_PATTERN = re.compile(r"^Q[0-9]+(?:_FULLTEXT)?$", re.IGNORECASE)
+    if not _QID_PATTERN.match(oid):
+        raise HTTPException(status_code=400, detail="invalid FDO identifier")
+
     # bitstream for PDF retrieval are handled separately
     if oid.startswith("Q") and oid.endswith("_FULLTEXT"):
         qid = oid[:-9]
-        entity = fetch_entity(qid)
+
+        try:
+            entity = fetch_entity(qid)
+        except HTTPException as exc:
+            raise
+
         return to_fdo_publication_bitstream(qid, entity)
 
     # everything else routed through to_fdo dispatcher
     if oid.startswith("Q"):
-        entity = fetch_entity(oid)
+
+        try:
+            entity = fetch_entity(oid)
+        except Exception as exc:
+            raise
+
         return to_fdo(oid, entity)
 
     raise HTTPException(status_code=400, detail="invalid FDO identifier")
