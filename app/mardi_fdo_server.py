@@ -112,7 +112,7 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     components = []
     if pdf_url:
         components.append({
-            "componentId": f"{qid}_FULLTEXT.pdf",
+            "componentId": f"fulltext",
             "mediaType": "application/pdf"
         })
     if components:
