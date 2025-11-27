@@ -98,13 +98,6 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     created, modified = normalize_created_modified(entity)
     profile, pdf_url = build_scholarly_article_profile(qid, entity)
 
-    reps = []
-    if pdf_url:
-        reps.append({
-            "@id": f"{FDO_IRI}{qid}_FULLTEXT",
-            "mediaType": "application/pdf"
-        })
-
     kernel = {
         "@id": fdo_id,
         "digitalObjectType": "https://schema.org/ScholarlyArticle",
@@ -113,10 +106,17 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         "immutable": True,
         "modified": modified,
     }
-    if created is not None:
+    if created:
         kernel["created"] = created
-    if reps:
-        kernel["fdo:hasRepresentation"] = reps
+
+    components = []
+    if pdf_url:
+        components.append({
+            "componentId": f"{qid}_FULLTEXT.pdf",
+            "mediaType": "application/pdf"
+        })
+    if components:
+        kernel["fdo:hasComponent"] = components
 
     return {
         "@context": [
@@ -138,38 +138,6 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def to_fdo_publication_bitstream(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-    fdo_id = f"{FDO_IRI}{qid}_FULLTEXT"
-    created, modified = normalize_created_modified(entity)
-
-    kernel = {
-        "@id": fdo_id,
-        "digitalObjectType": "http://id.loc.gov/ontologies/premis#File",
-        "primaryIdentifier": f"mardi:{qid}_FULLTEXT",
-        "kernelVersion": KERNEL_VERSION,
-        "immutable": True,
-        "modified": modified,
-        "primaryMediaType": "application/pdf"
-    }
-    if created is not None:
-        kernel["created"] = created
-
-    return {
-        "@context": [
-            "https://w3id.org/fdo/context/v1",
-            {
-                "prov": "http://www.w3.org/ns/prov#",
-                "fdo": "https://w3id.org/fdo/vocabulary/"
-            }
-        ],
-        "@id": fdo_id,
-        "@type": "DigitalObject",
-        "kernel": kernel,
-        "provenance": {
-            "prov:generatedAtTime": modified,
-            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
-        }
-    }
 
 def to_fdo_person(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     fdo_id = f"{FDO_IRI}{qid}"
@@ -298,34 +266,19 @@ async def root() -> HTMLResponse:
 
 @app.get("/fdo/{object_id}")
 def get_fdo(object_id: str):
-    oid = object_id.upper()
+    qid = object_id.upper()
 
     _QID_PATTERN = re.compile(r"^Q[0-9]+(?:_FULLTEXT)?$", re.IGNORECASE)
-    if not _QID_PATTERN.match(oid):
+    if not _QID_PATTERN.match(qid):
         raise HTTPException(status_code=400, detail="invalid FDO identifier")
 
-    # bitstream for PDF retrieval are handled separately
-    if oid.startswith("Q") and oid.endswith("_FULLTEXT"):
-        qid = oid[:-9]
+    try:
+        entity = fetch_entity(qid)
+    except Exception as exc:
+        raise
 
-        try:
-            entity = fetch_entity(qid)
-        except HTTPException as exc:
-            raise
+    return to_fdo(qid, entity)
 
-        return to_fdo_publication_bitstream(qid, entity)
-
-    # everything else routed through to_fdo dispatcher
-    if oid.startswith("Q"):
-
-        try:
-            entity = fetch_entity(oid)
-        except Exception as exc:
-            raise
-
-        return to_fdo(oid, entity)
-
-    raise HTTPException(status_code=400, detail="invalid FDO identifier")
 
 @app.get("/health")
 async def health() -> Dict[str, str]:
