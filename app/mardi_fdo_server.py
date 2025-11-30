@@ -176,6 +176,80 @@ def to_fdo_person(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build an FDO-compliant JSON-LD representation for a dataset object.
+
+    Produces a Digital Object record where the `digitalObjectType` is a
+    schema.org Dataset. The resulting kernel declares a single component
+    with componentId `"rocrate"`, pointing to a dynamically retrievable
+    RO-Crate ZIP representation of the dataset. The object's PID (QID) is
+    assigned as the primaryIdentifier. A minimal profile block is included
+    using schema.org Dataset fields derived from the input entity.
+
+    Args:
+        qid: PID/QID string identifying the dataset in the MaRDI Knowledge Graph.
+        entity: Metadata extracted from the KG for the dataset (label, timestamps).
+
+    Returns:
+        Dict[str, Any]: Complete FDO JSON-LD payload including:
+            - DigitalObject envelope with context definitions
+            - Kernel section with dataset type and component reference to RO-Crate
+            - Profile section describing the dataset content
+            - Provenance markers for timestamp and attribution
+
+    Raises:
+        KeyError: If required fields are missing from the `entity`.
+    """
+    fdo_id = f"{FDO_IRI}{qid}"
+    created, modified = normalize_created_modified(entity)
+
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "https://schema.org/Dataset",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+        "fdo:hasComponent": [
+            {
+                "@id": "#rocrate",
+                "componentId": "rocrate",
+                "mediaType": "application/zip"
+            }
+        ]
+    }
+    if created:
+        kernel["created"] = created
+
+    profile = {
+        "@context": "https://schema.org/",
+        "@type": "Dataset",
+        "@id": f"{fdo_id}#profile",
+        "name": entity.get("label", qid),
+        "identifier": f"mardi:{qid}"
+    }
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+        "kernel": kernel,
+        "profile": profile,
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
+        }
+    }
+
+
 
 def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """Transform an arbitrary entity into a minimal FDO payload.
@@ -211,6 +285,7 @@ def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
     "schema:Person": to_fdo_person,
+    "schema:Dataset": to_fdo_dataset,
 }
 
 

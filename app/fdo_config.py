@@ -10,6 +10,7 @@ FDO_ACCESS_IRI = "https://fdo.portal.mardi4nfdi.de/access/"
 QID_TYPE_MAP = {
     "Q56887": "schema:ScholarlyArticle",
     "Q57162": "schema:Person",
+    "Q56885": "schema:Dataset",
 }
 
 # JSON-LD Context definition for FDO payloads.
