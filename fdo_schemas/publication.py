@@ -1,5 +1,5 @@
 """
-Schema.org ScholarlyArticle helpers for MaRDI FDO prototype.
+Schema.org ScholarlyArticle helpers for MaRDI FDO server.
 """
 
 from typing import Any, Dict, List, Optional, Tuple

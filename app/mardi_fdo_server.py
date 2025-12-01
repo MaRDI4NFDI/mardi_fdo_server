@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.mardi_item_helper import normalize_created_modified, extract_item_ids
+from fdo_schemas.dataset import build_dataset_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI
@@ -202,6 +203,8 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         KeyError: If required fields are missing from the `entity`.
     """
     fdo_id = f"{FDO_IRI}{qid}"
+    profile, download_url = build_dataset_profile(qid, entity)
+
     created, modified = normalize_created_modified(entity)
 
     kernel = {
@@ -211,24 +214,20 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
         "modified": modified,
-        "fdo:hasComponent": [
-            {
-                "@id": "#rocrate",
-                "componentId": "rocrate",
-                "mediaType": "application/zip"
-            }
-        ]
     }
     if created:
         kernel["created"] = created
 
-    profile = {
-        "@context": "https://schema.org/",
-        "@type": "Dataset",
-        "@id": f"{fdo_id}#profile",
-        "name": entity.get("label", qid),
-        "identifier": f"mardi:{qid}"
-    }
+    # Only add if payload / download url exists
+    components = []
+    if download_url:
+        components.append({
+            "@id": "#rocrate",
+            "componentId": "rocrate",
+            "mediaType": "application/zip",
+        })
+    if components:
+        kernel["fdo:hasComponent"] = components
 
     return {
         "@context": [
