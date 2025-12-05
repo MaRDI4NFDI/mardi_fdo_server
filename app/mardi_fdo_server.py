@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.mardi_item_helper import normalize_created_modified, extract_item_ids
 from fdo_schemas.dataset import build_dataset_profile
+from fdo_schemas.software import build_software_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 from app.fdo_config import QID_P31_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI, \
@@ -262,33 +263,62 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def to_fdo_software(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Build an FDO-compliant JSON-LD representation for a software object.
-
-    Produces a Digital Object record where the `digitalObjectType` is a
-    schema.org Dataset. The object's PID (QID) is
-    assigned as the primaryIdentifier. A minimal profile block is included
-    using schema.org Software fields derived from the input entity.
+    """Build an FDO JSON-LD payload for software entities.
 
     Args:
-        qid: PID/QID string identifying the software in the MaRDI Knowledge Graph.
-        entity: Metadata extracted from the KG for the software (label, timestamps).
+        qid: PID/QID string that identifies the software in the MaRDI KG.
+        entity: MediaWiki entity payload containing labels, descriptions, and claims.
 
     Returns:
-        Dict[str, Any]: Complete FDO JSON-LD payload including:
-            - DigitalObject envelope with context definitions
-            - Kernel section with software type and component reference to documentation
-            - Profile section describing the software
-            - Provenance markers for timestamp and attribution
+        Dict[str, Any]: Digital Object with kernel, profile, and provenance sections.
 
     Raises:
-        KeyError: If required fields are missing from the `entity`.
+        KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
+    profile, download_url = build_software_profile(qid, entity)
 
-    ### THIS MUST BE COMPLETED ###
+    created, modified = normalize_created_modified(entity)
 
-    return None
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "https://schema.org/SoftwareApplication",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+    }
+    if created:
+        kernel["created"] = created
+
+    components = []
+    if download_url:
+        components.append({
+            "@id": "#software-archive",
+            "componentId": "software-archive",
+            "mediaType": "application/zip",
+        })
+    if components:
+        kernel["fdo:hasComponent"] = components
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+        "kernel": kernel,
+        "profile": profile,
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
+        }
+    }
 
 
 
