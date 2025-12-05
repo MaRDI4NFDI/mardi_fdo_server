@@ -18,15 +18,15 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-## Usage
+## Run the server
+
+### Standalone server
 
 ```bash
 uvicorn app.mardi_fdo_server:app --reload --port 8000 
 ```
 
-Request an entity: `curl http://localhost:8000/fdo/Q123456`.
-
-## Docker
+### Docker
 
 The project can be run using Docker for easy deployment and development.
 
@@ -39,6 +39,13 @@ The project can be run using Docker for easy deployment and development.
    ```bash
    docker run -p 8000:8000 mardi-fdo-server
    ```
+
+
+## Request an entity
+   ```bash
+   curl http://localhost:8000/fdo/Q123456
+   ```
+
 
 ## Deployment Notes
 
