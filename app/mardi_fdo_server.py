@@ -14,7 +14,8 @@ from app.mardi_item_helper import normalize_created_modified, extract_item_ids
 from fdo_schemas.dataset import build_dataset_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
-from app.fdo_config import QID_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI
+from app.fdo_config import QID_P31_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI, \
+    QID_P1460_TYPE_MAP
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
 KERNEL_VERSION = "v1"
@@ -71,7 +72,18 @@ def guess_type_from_claims(claims: Dict[str, Any]) -> str:
         datavalue = mainsnak.get("datavalue", {})
         value = datavalue.get("value", {})
         instance_qid = value.get("id", "")
-        return QID_TYPE_MAP.get(instance_qid, instance_qid or "mardi:UnknownType")
+        return QID_P31_TYPE_MAP.get(instance_qid, instance_qid or "mardi:UnknownType")
+
+    # If P31 ("instance of") is not set, try P1460 ("MaRDI profile type")
+
+    instance_stmt = claims.get("P1460", [])
+    if instance_stmt:
+        mainsnak = instance_stmt[0].get("mainsnak", {})
+        datavalue = mainsnak.get("datavalue", {})
+        value = datavalue.get("value", {})
+        instance_qid = value.get("id", "")
+        return QID_P1460_TYPE_MAP.get(instance_qid, instance_qid or "mardi:UnknownType")
+
     return "mardi:UnknownType"
 
 
@@ -249,6 +261,36 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def to_fdo_software(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build an FDO-compliant JSON-LD representation for a software object.
+
+    Produces a Digital Object record where the `digitalObjectType` is a
+    schema.org Dataset. The object's PID (QID) is
+    assigned as the primaryIdentifier. A minimal profile block is included
+    using schema.org Software fields derived from the input entity.
+
+    Args:
+        qid: PID/QID string identifying the software in the MaRDI Knowledge Graph.
+        entity: Metadata extracted from the KG for the software (label, timestamps).
+
+    Returns:
+        Dict[str, Any]: Complete FDO JSON-LD payload including:
+            - DigitalObject envelope with context definitions
+            - Kernel section with software type and component reference to documentation
+            - Profile section describing the software
+            - Provenance markers for timestamp and attribution
+
+    Raises:
+        KeyError: If required fields are missing from the `entity`.
+    """
+    fdo_id = f"{FDO_IRI}{qid}"
+
+    ### THIS MUST BE COMPLETED ###
+
+    return None
+
+
 
 def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """Transform an arbitrary entity into a minimal FDO payload.
@@ -285,6 +327,7 @@ TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
     "schema:Person": to_fdo_person,
     "schema:Dataset": to_fdo_dataset,
+    "schema:Software": to_fdo_software,
 }
 
 
