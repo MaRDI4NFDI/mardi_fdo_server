@@ -12,7 +12,8 @@ from fastapi.staticfiles import StaticFiles
 
 from app.mardi_item_helper import normalize_created_modified, extract_item_ids
 from fdo_schemas.dataset import build_dataset_profile
-from fdo_schemas.software import build_software_profile
+from fdo_schemas.software_application import build_software_application_profile
+from fdo_schemas.software_sourcecode import build_software_sourcecode_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 from app.fdo_config import QID_P31_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI, \
@@ -262,11 +263,11 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def to_fdo_software(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
-    """Build an FDO JSON-LD payload for software entities.
+def to_fdo_software_application(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """Build an FDO JSON-LD payload for software application entities.
 
     Args:
-        qid: PID/QID string that identifies the software in the MaRDI KG.
+        qid: PID/QID string that identifies the software application in the MaRDI KG.
         entity: MediaWiki entity payload containing labels, descriptions, and claims.
 
     Returns:
@@ -276,7 +277,7 @@ def to_fdo_software(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url = build_software_profile(qid, entity)
+    profile, download_url = build_software_application_profile(qid, entity)
 
     created, modified = normalize_created_modified(entity)
 
@@ -321,6 +322,64 @@ def to_fdo_software(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """Build an FDO JSON-LD payload for software source code entities.
+
+    Args:
+        qid: PID/QID string that identifies the software source code in the MaRDI KG.
+        entity: MediaWiki entity payload containing labels, descriptions, and claims.
+
+    Returns:
+        Dict[str, Any]: Digital Object with kernel, profile, and provenance sections.
+
+    Raises:
+        KeyError: If mandatory fields are missing from ``entity``.
+    """
+    fdo_id = f"{FDO_IRI}{qid}"
+    profile, download_url = build_software_sourcecode_profile(qid, entity)
+
+    created, modified = normalize_created_modified(entity)
+
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "https://schema.org/SoftwareSourceCode",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+    }
+    if created:
+        kernel["created"] = created
+
+    components = []
+    if download_url:
+        components.append({
+            "@id": "#software-archive",
+            "componentId": "software-archive",
+            "mediaType": "application/zip",
+        })
+    if components:
+        kernel["fdo:hasComponent"] = components
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+        "kernel": kernel,
+        "profile": profile,
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
+        }
+    }
+
 
 def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """Transform an arbitrary entity into a minimal FDO payload.
@@ -357,7 +416,8 @@ TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
     "schema:Person": to_fdo_person,
     "schema:Dataset": to_fdo_dataset,
-    "schema:Software": to_fdo_software,
+    "schema:SoftwareApplication": to_fdo_software_application,
+    "schema:SoftwareSourceCode": to_fdo_software_sourcecode,
 }
 
 

@@ -13,7 +13,7 @@ from app.mardi_item_helper import (
 )
 
 
-def build_software_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
     """Construct a minimal schema.org SoftwareSourceCode profile.
 
     Args:
@@ -35,6 +35,8 @@ def build_software_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
     described_by_ids = extract_item_ids(claims, "P286")
     publication_date = extract_time_claim(claims, "P28") or ""
     software_version = extract_string_claim(claims, "P132") or ""
+    programming_language = extract_string_claim(claims, "P114") or ""
+    software_heritage_id = extract_string_claim(claims, "P1454") or ""
     repository_url = extract_string_claim(claims, "P339") or ""
     download_url = extract_string_claim(claims, "P205") or ""
     doi_value = extract_string_claim(claims, "P27") or ""
