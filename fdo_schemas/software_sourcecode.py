@@ -13,7 +13,7 @@ from app.mardi_item_helper import (
 )
 
 
-def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Optional[str]]:
     """Construct a minimal schema.org SoftwareSourceCode profile.
 
     Args:
@@ -39,6 +39,9 @@ def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple
     repository_url = extract_string_claim(claims, "P339") or ""
     download_url = extract_string_claim(claims, "P205") or ""
     doi_value = extract_string_claim(claims, "P27") or ""
+
+    cran_name = extract_string_claim(claims, "P229") or ""
+    documentation_pdf_url = f"https://cran.r-project.org/web/packages/{cran_name}/{cran_name}.pdf" if cran_name else None
 
     profile: Dict[str, Any] = {
         "@context": "https://schema.org/",
@@ -87,4 +90,4 @@ def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)
 
-    return profile, download_url
+    return profile, download_url, documentation_pdf_url

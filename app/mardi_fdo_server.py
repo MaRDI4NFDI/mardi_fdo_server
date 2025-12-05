@@ -336,7 +336,7 @@ def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, An
         KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url = build_software_sourcecode_profile(qid, entity)
+    profile, download_url, documentation_pdf_url = build_software_sourcecode_profile(qid, entity)
 
     created, modified = normalize_created_modified(entity)
 
@@ -357,6 +357,13 @@ def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, An
             "@id": "#software-archive",
             "componentId": "software-archive",
             "mediaType": "application/zip",
+        })
+
+    if documentation_pdf_url:
+        components.append({
+            "@id": f"#documentation",
+            "componentId": f"documentation",
+            "mediaType": "application/pdf"
         })
     if components:
         kernel["fdo:hasComponent"] = components
