@@ -233,7 +233,7 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     if created:
         kernel["created"] = created
 
-    # Only add if payload / download url exists
+    # Keep a RO-Crate component when a direct dataset download URL is present.
     components = []
     if download_url:
         components.append({

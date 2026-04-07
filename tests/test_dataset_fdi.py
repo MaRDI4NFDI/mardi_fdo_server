@@ -63,6 +63,7 @@ def test_dataset_components_from_storage_qualifiers(mock_fetch):
     components = data["kernel"].get("fdo:hasComponent", [])
     component_ids = {component["componentId"] for component in components}
 
+    assert "rocrate" not in component_ids
     assert "rki_corona_cases_2020.csv" in component_ids
     assert "software-archive" not in component_ids
     assert "fulltext" not in component_ids
