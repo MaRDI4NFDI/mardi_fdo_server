@@ -262,6 +262,43 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     if components:
         kernel["fdo:hasComponent"] = components
 
+    # Add additional entries to "profile -> distribution" for all file-like components
+    # in "fdo:hasComponent"(except the virtual "#rocrate" entry)
+    distribution_entries = profile.get("distribution", [])
+    if not isinstance(distribution_entries, list):
+        distribution_entries = []
+
+    # Keep track of existing distribution URLs to avoid duplicates.
+    seen_distribution_urls = {
+        entry.get("contentUrl")
+        for entry in distribution_entries
+        if isinstance(entry, dict) and entry.get("contentUrl")
+    }
+
+    # Create one DataDownload distribution entry per component (except rocrate).
+    for component in components:
+        component_id = component.get("componentId")
+        if not component_id or component.get("@id") == "#rocrate":
+            continue
+        retrieve_url = f"https://doip.portal.mardi4nfdi.de/doip/retrieve/{qid}/{component_id}"
+        if retrieve_url in seen_distribution_urls:
+            continue
+
+        distribution_entry = {
+            "@type": "DataDownload",
+            "contentUrl": retrieve_url,
+        }
+        media_type = component.get("mediaType")
+        if media_type:
+            distribution_entry["encodingFormat"] = media_type
+
+        distribution_entries.append(distribution_entry)
+        seen_distribution_urls.add(retrieve_url)
+
+    # Write back all collected distribution entries.
+    if distribution_entries:
+        profile["distribution"] = distribution_entries
+
     return {
         "@context": [
             "https://w3id.org/fdo/context/v1",
