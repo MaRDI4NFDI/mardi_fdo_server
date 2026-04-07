@@ -5,7 +5,14 @@ import logging
 import mimetypes
 import re
 
-logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+_log_formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+_handler = logging.StreamHandler()
+_handler.setFormatter(_log_formatter)
+
+for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    _logger = logging.getLogger(_name)
+    _logger.handlers = [_handler]
+    _logger.propagate = False
 from functools import lru_cache
 from typing import Any, Dict
 
