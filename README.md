@@ -46,9 +46,15 @@ The project can be run using Docker for easy deployment and development.
    curl http://localhost:8000/fdo/Q123456
    ```
 
+## Notes on testing
+To perform unit tests in WSL, make sure to export the correct path first befor you run the tests: 
+
+   ```bash
+   export PYTHONPATH=/mnt/c/.../mardi_fdo_server
+   pytest
+   ```
 
 ## Deployment Notes
-
 - Run the container/pod alongside the existing MaRDI stack
 - Expose it - e.g. via Traefik 
 - The service is read-only - it only queries the MediaWiki/SPARQL backends
