@@ -571,3 +571,9 @@ async def health() -> Dict[str, str]:
 async def favicon() -> Response:
     """Return empty favicon response to silence 404s."""
     return Response(content=b"", media_type="image/x-icon", status_code=204)
+
+
+@app.get("/robots.txt", include_in_schema=False)
+async def robots() -> Response:
+    """Return a permissive robots.txt to silence 404s."""
+    return Response(content="User-agent: *\nDisallow: /\n", media_type="text/plain")
