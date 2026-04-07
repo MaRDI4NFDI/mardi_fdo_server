@@ -121,6 +121,32 @@ SAMPLE_DATASET_ENTITY_WITH_MIXED_STORAGE_QUALIFIERS = {
                         }
                     ]
                 }
+            },
+            {
+                "mainsnak": {
+                    "datavalue": {
+                        "type": "wikibase-entityid",
+                        "value": {"id": "Q7777777"}
+                    }
+                },
+                "qualifiers": {
+                    "P205": [
+                        {
+                            "datavalue": {
+                                "type": "string",
+                                "value": "https://example.org/download/rki_corona_cases_2020.csv"
+                            }
+                        }
+                    ],
+                    "P504": [
+                        {
+                            "datavalue": {
+                                "type": "string",
+                                "value": "https://example.org/archive/rki_corona_cases_2020.csv"
+                            }
+                        }
+                    ]
+                }
             }
         ]
     },
@@ -138,6 +164,13 @@ def test_dataset_ignores_non_p1828_storage_qualifiers(mock_fetch):
     data = resp.json()
     components = data["kernel"].get("fdo:hasComponent", [])
     component_ids = {component["componentId"] for component in components}
+    distributions = data["profile"].get("distribution", [])
+    distribution_urls = {distribution["contentUrl"] for distribution in distributions}
 
     assert "rki_corona_cases_2020.csv" in component_ids
     assert "https://zenodo.org/records/19414541/files/stocnet/autograph-v0.6.1.zip" not in component_ids
+    assert "https://example.org/download/rki_corona_cases_2020.csv" not in component_ids
+    assert "https://example.org/archive/rki_corona_cases_2020.csv" not in component_ids
+    assert "https://zenodo.org/records/19414541/files/stocnet/autograph-v0.6.1.zip" in distribution_urls
+    assert "https://example.org/download/rki_corona_cases_2020.csv" in distribution_urls
+    assert "https://example.org/archive/rki_corona_cases_2020.csv" in distribution_urls

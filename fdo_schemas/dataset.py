@@ -1,7 +1,8 @@
 """
 Schema.org Dataset helpers for MaRDI FDO server.
 """
-from typing import Dict, Any, Tuple, Optional
+import mimetypes
+from typing import Dict, Any, Tuple, Optional, List
 
 from app.fdo_config import ENTITY_IRI, FDO_IRI
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
@@ -41,12 +42,32 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
     fileformat_ids = extract_item_ids(claims, "P204") or []
     openml_id = extract_string_claim(claims, "P1473") or ""
 
-    # Components at storage (P1827)
+    # Get all items listed at "Components at storage" (P1827) to check
+    # whether they belong to "fdo:hasComponent" or to "profile -> distribution"
     storage_item_ids = extract_item_ids(claims, "P1827") or []
     has_components_at_storage: Dict[str, Any] = {}
+    storage_distributions: List[Dict[str, Any]] = []
+
+    # Check for each item what type it is. If it is in:
+    # "url" (P188), or "download link" (P504), or
+    # "full work available at URL" (P205)
+    # it will be added as a DataDownload in profile.distribution in the FDO JSON.
+    # If not, it is unhandled here, but filtered in the calling method.
     for item_id in storage_item_ids:
         qualifiers = extract_qualifiers_for_item(claims, "P1827", item_id)
         has_components_at_storage[item_id] = qualifiers
+        for qualifier_prop in ("P188", "P205", "P504"):
+            storage_url = qualifiers.get(qualifier_prop)
+            if not isinstance(storage_url, str) or not storage_url:
+                continue
+            storage_distribution: Dict[str, Any] = {
+                "@type": "DataDownload",
+                "contentUrl": storage_url,
+            }
+            guessed_media_type, _ = mimetypes.guess_type(storage_url)
+            if guessed_media_type:
+                storage_distribution["encodingFormat"] = guessed_media_type
+            storage_distributions.append(storage_distribution)
 
     # Identifiers: Zenodo (PropertyValue), DOI
     zenodo_id = extract_string_claim(claims, "P227") or ""
@@ -79,6 +100,8 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
         }
         profile.setdefault("sameAs", []).append(f"https://doi.org/{doi_value}")
 
+    # Populate the "profile -> distributions" part
+    distributions: List[Dict[str, Any]] = []
     if download_url:
         dist = {
             "@type": "DataDownload",
@@ -87,7 +110,21 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
         if fileformat_ids:
             dist["encodingFormat"] = schema_refs_from_ids(fileformat_ids)[0]
 
-        profile["distribution"] = [dist]
+        distributions.append(dist)
+
+    distributions.extend(storage_distributions)
+
+    unique_distributions: List[Dict[str, Any]] = []
+    seen_distribution_urls = set()
+    for distribution in distributions:
+        content_url = distribution.get("contentUrl")
+        if not content_url or content_url in seen_distribution_urls:
+            continue
+        seen_distribution_urls.add(content_url)
+        unique_distributions.append(distribution)
+
+    if unique_distributions:
+        profile["distribution"] = unique_distributions
 
     if zenodo_id:
         profile.setdefault("sameAs", []).append(f"https://zenodo.org/record/{zenodo_id}")
