@@ -1,6 +1,7 @@
 """
 Minimal FastAPI service exposing FAIR Digital Objects (FDOs) for MaRDI QIDs.
 """
+import mimetypes
 import re
 from functools import lru_cache
 from typing import Any, Dict
@@ -217,7 +218,7 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         KeyError: If required fields are missing from the `entity`.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url = build_dataset_profile(qid, entity)
+    profile, download_url, has_components_at_storage = build_dataset_profile(qid, entity)
 
     created, modified = normalize_created_modified(entity)
 
@@ -240,6 +241,22 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
             "componentId": "rocrate",
             "mediaType": "application/zip",
         })
+    
+    existing_component_ids = {component["componentId"] for component in components}
+    for qualifiers in has_components_at_storage.values():
+        if "P1828" not in qualifiers:
+            continue
+        filename = qualifiers.get("P1828")
+        if not filename or filename in existing_component_ids:
+            continue
+        guessed_media_type, _ = mimetypes.guess_type(filename)
+        components.append({
+            "@id": f"#{filename}",
+            "componentId": filename,
+            "mediaType": guessed_media_type or "application/octet-stream",
+        })
+        existing_component_ids.add(filename)
+    
     if components:
         kernel["fdo:hasComponent"] = components
 

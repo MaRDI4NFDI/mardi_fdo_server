@@ -5,10 +5,10 @@ from typing import Dict, Any, Tuple, Optional
 
 from app.fdo_config import ENTITY_IRI, FDO_IRI
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
-    schema_refs_from_ids
+    schema_refs_from_ids, extract_qualifiers_for_item
 
 
-def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
     """
     Construct a minimal schema.org Dataset profile from MediaWiki claims.
 
@@ -20,7 +20,10 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
         entity: Raw entity dict from the KG, including labels and claims.
 
     Returns:
-        Dict[str, Any]: schema:Dataset JSON-LD profile block.
+        Tuple containing:
+        - Dict[str, Any]: schema:Dataset JSON-LD profile block.
+        - Optional[str]: Download URL (P205) if present.
+        - Dict[str, Any]: Components at storage qualifier information (P1827).
     """
     claims = entity.get("claims", {})
 
@@ -37,6 +40,13 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
     download_url = extract_string_claim(claims, "P205") or ""
     fileformat_ids = extract_item_ids(claims, "P204") or []
     openml_id = extract_string_claim(claims, "P1473") or ""
+
+    # Components at storage (P1827)
+    storage_item_ids = extract_item_ids(claims, "P1827") or []
+    has_components_at_storage: Dict[str, Any] = {}
+    for item_id in storage_item_ids:
+        qualifiers = extract_qualifiers_for_item(claims, "P1827", item_id)
+        has_components_at_storage[item_id] = qualifiers
 
     # Identifiers: Zenodo (PropertyValue), DOI
     zenodo_id = extract_string_claim(claims, "P227") or ""
@@ -93,4 +103,4 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)
 
-    return profile, download_url
+    return profile, download_url, has_components_at_storage
