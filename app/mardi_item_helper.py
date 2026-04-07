@@ -89,3 +89,40 @@ def normalize_created_modified(entity: Dict[str, Any]) -> Tuple[Optional[str], s
         from datetime import datetime, timezone
         modified = datetime.now(timezone.utc).isoformat()
     return created, modified
+
+
+def extract_qualifiers_for_item(claims: Dict[str, Any], prop: str, target_item_id: str) -> Dict[str, Any]:
+    """Extract qualifiers from a specific property statement for a target item.
+
+    Args:
+        claims: MediaWiki claims block.
+        prop: Property id (e.g., ``P1827``).
+        target_item_id: Item ID to extract qualifiers for (e.g., ``Q6830870``).
+
+    Returns:
+        Dictionary of qualifier properties and their values.
+    """
+    qualifiers_dict: Dict[str, Any] = {}
+    for statement in claims.get(prop, []):
+        datavalue = statement.get("mainsnak", {}).get("datavalue")
+        if datavalue and datavalue.get("type") == "wikibase-entityid":
+            item_id = datavalue["value"].get("id")
+            if item_id == target_item_id:
+                qualifiers = statement.get("qualifiers", {})
+                for qualifier_prop, qualifier_values in qualifiers.items():
+                    for qual_value in qualifier_values:
+                        q_datavalue = qual_value.get("datavalue")
+                        if q_datavalue:
+                            if q_datavalue.get("type") == "wikibase-entityid":
+                                qualifiers_dict[qualifier_prop] = q_datavalue["value"].get("id")
+                            elif q_datavalue.get("type") == "string":
+                                qualifiers_dict[qualifier_prop] = q_datavalue.get("value")
+                            elif q_datavalue.get("type") == "time":
+                                time_val = q_datavalue.get("value", {}).get("time", "")
+                                if time_val:
+                                    time_val = time_val.lstrip("+")
+                                    if time_val.endswith("T00:00:00Z"):
+                                        time_val = time_val.replace("T00:00:00Z", "")
+                                    qualifiers_dict[qualifier_prop] = time_val
+                break
+    return qualifiers_dict
