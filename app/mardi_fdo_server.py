@@ -241,7 +241,9 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
             "componentId": "rocrate",
             "mediaType": "application/zip",
         })
-    
+
+    # Handle entries from the "stored at" (P1827) section of the item
+    # Only keep entries that have the qualifier "FDO component id" (P1828)
     existing_component_ids = {component["componentId"] for component in components}
     for qualifiers in has_components_at_storage.values():
         if "P1828" not in qualifiers:
