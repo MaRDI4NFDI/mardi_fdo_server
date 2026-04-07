@@ -1,8 +1,11 @@
 """
 Minimal FastAPI service exposing FAIR Digital Objects (FDOs) for MaRDI QIDs.
 """
+import logging
 import mimetypes
 import re
+
+logging.basicConfig(format="%(asctime)s %(levelname)s %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 from functools import lru_cache
 from typing import Any, Dict
 
