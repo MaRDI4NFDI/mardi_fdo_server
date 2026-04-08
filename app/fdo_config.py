@@ -5,6 +5,7 @@ Configuration and static data structures for the MaRDI FDO Server.
 ENTITY_IRI = "https://portal.mardi4nfdi.de/entity/"
 FDO_IRI = "https://fdo.portal.mardi4nfdi.de/fdo/"
 FDO_ACCESS_IRI = "https://fdo.portal.mardi4nfdi.de/access/"
+DOIP_IRI = "https://doip.portal.mardi4nfdi.de/doip/retrieve"
 
 # Maps Wikibase QIDs to internal/schema.org type strings, based on P31 ("instance of").
 QID_P31_TYPE_MAP = {

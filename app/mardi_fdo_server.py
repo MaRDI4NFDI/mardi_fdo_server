@@ -29,7 +29,7 @@ from fdo_schemas.software_sourcecode import build_software_sourcecode_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 from app.fdo_config import QID_P31_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI, \
-    QID_P1460_TYPE_MAP
+    QID_P1460_TYPE_MAP, DOIP_IRI
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
 KERNEL_VERSION = "v1"
@@ -291,7 +291,7 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         component_id = component.get("componentId")
         if not component_id or component.get("@id") == "#rocrate":
             continue
-        retrieve_url = f"https://doip.portal.mardi4nfdi.de/doip/retrieve/{qid}/{component_id}"
+        retrieve_url = f"{DOIP_IRI}/{qid}/{component_id}"
         if retrieve_url in seen_distribution_urls:
             continue
 
@@ -396,7 +396,7 @@ def to_fdo_workflow(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         component_id = component.get("componentId")
         if not component_id:
             continue
-        retrieve_url = f"https://doip.portal.mardi4nfdi.de/doip/retrieve/{qid}/{component_id}"
+        retrieve_url = f"{DOIP_IRI}/{qid}/{component_id}"
         if retrieve_url in seen_distribution_urls:
             continue
         distribution_entry = {
