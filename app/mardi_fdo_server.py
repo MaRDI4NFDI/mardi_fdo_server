@@ -23,6 +23,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.mardi_item_helper import normalize_created_modified, extract_item_ids
 from fdo_schemas.dataset import build_dataset_profile
+from fdo_schemas.workflow import build_workflow_profile
 from fdo_schemas.software_application import build_software_application_profile
 from fdo_schemas.software_sourcecode import build_software_sourcecode_profile
 from fdo_schemas.publication import build_scholarly_article_profile
@@ -329,6 +330,112 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def to_fdo_workflow(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Build an FDO-compliant JSON-LD representation for a workflow object.
+
+    Distributions come exclusively from the "stored at" (P1827) qualifier
+    block — there is no direct download URL or DOI for workflows. Components
+    are derived from P1828 ("FDO component id") qualifiers on P1827 statements.
+
+    Args:
+        qid: PID/QID string identifying the workflow in the MaRDI Knowledge Graph.
+        entity: Metadata extracted from the KG for the workflow (label, timestamps).
+
+    Returns:
+        Dict[str, Any]: Complete FDO JSON-LD payload including:
+            - DigitalObject envelope with context definitions
+            - Kernel section with workflow type and component references
+            - Profile section describing the workflow content
+            - Provenance markers for timestamp and attribution
+    """
+    fdo_id = f"{FDO_IRI}{qid}"
+    profile, has_components_at_storage = build_workflow_profile(qid, entity)
+
+    created, modified = normalize_created_modified(entity)
+
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": "https://schema.org/Workflow",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+    }
+    if created:
+        kernel["created"] = created
+
+    # Components come only from P1827 entries that carry a P1828 qualifier.
+    components = []
+    existing_component_ids: set = set()
+    for qualifiers in has_components_at_storage.values():
+        if "P1828" not in qualifiers:
+            continue
+        filename = qualifiers.get("P1828")
+        if not filename or filename in existing_component_ids:
+            continue
+        guessed_media_type, _ = mimetypes.guess_type(filename)
+        components.append({
+            "@id": f"#{filename}",
+            "componentId": filename,
+            "mediaType": guessed_media_type or "application/octet-stream",
+        })
+        existing_component_ids.add(filename)
+
+    if components:
+        kernel["fdo:hasComponent"] = components
+
+    # Enrich profile -> distribution with one DataDownload per component.
+    distribution_entries = profile.get("distribution", [])
+    if not isinstance(distribution_entries, list):
+        distribution_entries = []
+
+    seen_distribution_urls = {
+        entry.get("contentUrl")
+        for entry in distribution_entries
+        if isinstance(entry, dict) and entry.get("contentUrl")
+    }
+
+    for component in components:
+        component_id = component.get("componentId")
+        if not component_id:
+            continue
+        retrieve_url = f"https://doip.portal.mardi4nfdi.de/doip/retrieve/{qid}/{component_id}"
+        if retrieve_url in seen_distribution_urls:
+            continue
+        distribution_entry = {
+            "@type": "DataDownload",
+            "contentUrl": retrieve_url,
+        }
+        media_type = component.get("mediaType")
+        if media_type:
+            distribution_entry["encodingFormat"] = media_type
+        distribution_entries.append(distribution_entry)
+        seen_distribution_urls.add(retrieve_url)
+
+    if distribution_entries:
+        profile["distribution"] = distribution_entries
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/"
+            }
+        ],
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+        "kernel": kernel,
+        "profile": profile,
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph"
+        }
+    }
+
+
 def to_fdo_software_application(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """Build an FDO JSON-LD payload for software application entities.
 
@@ -489,6 +596,7 @@ TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
     "schema:Person": to_fdo_person,
     "schema:Dataset": to_fdo_dataset,
+    "schema:Workflow": to_fdo_workflow,
     "schema:SoftwareApplication": to_fdo_software_application,
     "schema:SoftwareSourceCode": to_fdo_software_sourcecode,
 }
