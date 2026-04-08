@@ -11,14 +11,7 @@ from app.mardi_item_helper import extract_time_claim, extract_string_claim, extr
 
 def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Construct a minimal schema.org HowTo profile from MediaWiki claims.
-
-    No cross-entity expansion. No provenance modeling. Only direct claims
-    mapped to schema.org.
-
-    Dropped compared to dataset: direct download URL (P205), DOI (P27),
-    file format (P204), OpenML id (P1473). Distributions come exclusively
-    from the "stored at" (P1827) qualifier block.
+    Construct a minimal schema.org Workflow profile from MediaWiki claims.
 
     Args:
         qid: PID/QID string.
@@ -26,7 +19,7 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
 
     Returns:
         Tuple containing:
-        - Dict[str, Any]: schema:HowTo JSON-LD profile block.
+        - Dict[str, Any]: schema:Workflow JSON-LD profile block.
         - Dict[str, Any]: Components at storage qualifier information (P1827).
     """
     claims = entity.get("claims", {})
@@ -39,7 +32,6 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
     description = entity.get("descriptions", {}).get("en", {}).get("value", "")
     publication_date = extract_time_claim(claims, "P28") or ""
     license_ids = extract_item_ids(claims, "P163")
-    community_ids = extract_item_ids(claims, "P1495") or []
     described_by_ids = extract_item_ids(claims, "P286") or []
     storage_item_ids = extract_item_ids(claims, "P1827") or []
 
@@ -98,9 +90,6 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
 
     if zenodo_id:
         profile.setdefault("sameAs", []).append(f"https://zenodo.org/record/{zenodo_id}")
-
-    if community_ids:
-        profile["about"] = schema_refs_from_ids(community_ids)
 
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)

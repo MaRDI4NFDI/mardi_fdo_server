@@ -334,10 +334,6 @@ def to_fdo_workflow(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     """
     Build an FDO-compliant JSON-LD representation for a workflow object.
 
-    Distributions come exclusively from the "stored at" (P1827) qualifier
-    block — there is no direct download URL or DOI for workflows. Components
-    are derived from P1828 ("FDO component id") qualifiers on P1827 statements.
-
     Args:
         qid: PID/QID string identifying the workflow in the MaRDI Knowledge Graph.
         entity: Metadata extracted from the KG for the workflow (label, timestamps).
