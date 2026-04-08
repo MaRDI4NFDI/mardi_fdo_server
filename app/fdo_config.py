@@ -15,10 +15,11 @@ QID_P31_TYPE_MAP = {
     "Q68657": "schema:Workflow",
 }
 
-# Maps Wikibase QIDs to internal/schema.org type strings, based on P1460 ("MaRDI profiel type").
+# Maps Wikibase QIDs to internal/schema.org type strings, based on P1460 ("MaRDI profile type").
 QID_P1460_TYPE_MAP = {
     "Q5976450": "schema:SoftwareApplication",
     "Q5984635": "schema:Dataset",
+    "Q6534216": "schema:Workflow",
 }
 
 
