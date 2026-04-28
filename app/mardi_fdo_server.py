@@ -13,7 +13,6 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
     _logger = logging.getLogger(_name)
     _logger.handlers = [_handler]
     _logger.propagate = False
-from functools import lru_cache
 from typing import Any, Dict
 
 import httpx
@@ -43,7 +42,6 @@ app = FastAPI(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-@lru_cache(maxsize=2048)
 def fetch_entity(qid: str) -> Dict[str, Any]:
     """Look up a QID via the MediaWiki API.
 
