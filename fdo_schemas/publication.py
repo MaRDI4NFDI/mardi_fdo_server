@@ -7,13 +7,14 @@ from typing import Any, Dict, List, Optional, Tuple
 from app.fdo_config import ENTITY_IRI
 from app.mardi_item_helper import (
     extract_item_ids,
+    extract_qualifiers_for_item,
     extract_string_claim,
     extract_time_claim,
     schema_refs_from_ids,
 )
 
 
-def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str]]:
+def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
     claims = entity.get("claims", {})
 
     arxiv_id = extract_string_claim(claims, "P21")
@@ -84,5 +85,10 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     if citation_ids:
         profile["citation"] = schema_refs_from_ids(citation_ids)
 
-    return profile, pdf_url
+    storage_item_ids = extract_item_ids(claims, "P1827") or []
+    has_components_at_storage: Dict[str, Any] = {}
+    for item_id in storage_item_ids:
+        has_components_at_storage[item_id] = extract_qualifiers_for_item(claims, "P1827", item_id)
+
+    return profile, pdf_url, has_components_at_storage
 

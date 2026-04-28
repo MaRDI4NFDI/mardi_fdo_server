@@ -7,13 +7,14 @@ from typing import Any, Dict, Optional, Tuple
 from app.fdo_config import FDO_IRI
 from app.mardi_item_helper import (
     extract_item_ids,
+    extract_qualifiers_for_item,
     extract_string_claim,
     extract_time_claim,
     schema_refs_from_ids,
 )
 
 
-def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Optional[str]]:
+def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Optional[str], Dict[str, Any]]:
     """Construct a minimal schema.org SoftwareSourceCode profile.
 
     Args:
@@ -90,4 +91,9 @@ def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)
 
-    return profile, download_url, documentation_pdf_url
+    storage_item_ids = extract_item_ids(claims, "P1827") or []
+    has_components_at_storage: Dict[str, Any] = {}
+    for item_id in storage_item_ids:
+        has_components_at_storage[item_id] = extract_qualifiers_for_item(claims, "P1827", item_id)
+
+    return profile, download_url, documentation_pdf_url, has_components_at_storage

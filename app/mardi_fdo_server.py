@@ -123,7 +123,7 @@ def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     fdo_id = f"{FDO_IRI}{qid}"
     created, modified = normalize_created_modified(entity)
-    profile, pdf_url = build_scholarly_article_profile(qid, entity)
+    profile, pdf_url, has_components_at_storage = build_scholarly_article_profile(qid, entity)
 
     kernel = {
         "@id": fdo_id,
@@ -137,11 +137,25 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         kernel["created"] = created
 
     components = []
-    if pdf_url:
+    existing_component_ids: set = set()
+    for qualifiers in has_components_at_storage.values():
+        if "P1828" not in qualifiers:
+            continue
+        filename = qualifiers.get("P1828")
+        if not filename or filename in existing_component_ids:
+            continue
+        guessed_media_type, _ = mimetypes.guess_type(filename)
         components.append({
-            "@id": f"#fulltext",
-            "componentId": f"fulltext",
-            "mediaType": "application/pdf"
+            "@id": f"#{filename}",
+            "componentId": filename,
+            "mediaType": guessed_media_type or "application/octet-stream",
+        })
+        existing_component_ids.add(filename)
+    if pdf_url and not existing_component_ids:
+        components.append({
+            "@id": "#fulltext.pdf",
+            "componentId": "fulltext.pdf",
+            "mediaType": "application/pdf",
         })
     if components:
         kernel["fdo:hasComponent"] = components
@@ -248,8 +262,8 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     components = []
     if download_url:
         components.append({
-            "@id": "#rocrate",
-            "componentId": "rocrate",
+            "@id": "#rocrate.zip",
+            "componentId": "rocrate.zip",
             "mediaType": "application/zip",
         })
 
@@ -274,7 +288,7 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         kernel["fdo:hasComponent"] = components
 
     # Add additional entries to "profile -> distribution" for all file-like components
-    # in "fdo:hasComponent"(except the virtual "#rocrate" entry)
+    # in "fdo:hasComponent" (except the virtual "#rocrate.zip" entry)
     distribution_entries = profile.get("distribution", [])
     if not isinstance(distribution_entries, list):
         distribution_entries = []
@@ -286,10 +300,10 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         if isinstance(entry, dict) and entry.get("contentUrl")
     }
 
-    # Create one DataDownload distribution entry per component (except rocrate).
+    # Create one DataDownload distribution entry per component (except rocrate.zip).
     for component in components:
         component_id = component.get("componentId")
-        if not component_id or component.get("@id") == "#rocrate":
+        if not component_id or component.get("@id") == "#rocrate.zip":
             continue
         retrieve_url = f"{DOIP_IRI}/{qid}/{component_id}"
         if retrieve_url in seen_distribution_urls:
@@ -446,7 +460,7 @@ def to_fdo_software_application(qid: str, entity: Dict[str, Any]) -> Dict[str, A
         KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url = build_software_application_profile(qid, entity)
+    profile, download_url, has_components_at_storage = build_software_application_profile(qid, entity)
 
     created, modified = normalize_created_modified(entity)
 
@@ -462,7 +476,21 @@ def to_fdo_software_application(qid: str, entity: Dict[str, Any]) -> Dict[str, A
         kernel["created"] = created
 
     components = []
-    if download_url:
+    existing_component_ids: set = set()
+    for qualifiers in has_components_at_storage.values():
+        if "P1828" not in qualifiers:
+            continue
+        filename = qualifiers.get("P1828")
+        if not filename or filename in existing_component_ids:
+            continue
+        guessed_media_type, _ = mimetypes.guess_type(filename)
+        components.append({
+            "@id": f"#{filename}",
+            "componentId": filename,
+            "mediaType": guessed_media_type or "application/octet-stream",
+        })
+        existing_component_ids.add(filename)
+    if download_url and not existing_component_ids:
         components.append({
             "@id": "#software-archive",
             "componentId": "software-archive",
@@ -505,7 +533,7 @@ def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, An
         KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url, documentation_pdf_url = build_software_sourcecode_profile(qid, entity)
+    profile, download_url, documentation_pdf_url, has_components_at_storage = build_software_sourcecode_profile(qid, entity)
 
     created, modified = normalize_created_modified(entity)
 
@@ -521,19 +549,33 @@ def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, An
         kernel["created"] = created
 
     components = []
-    if download_url:
+    existing_component_ids: set = set()
+    for qualifiers in has_components_at_storage.values():
+        if "P1828" not in qualifiers:
+            continue
+        filename = qualifiers.get("P1828")
+        if not filename or filename in existing_component_ids:
+            continue
+        guessed_media_type, _ = mimetypes.guess_type(filename)
         components.append({
-            "@id": "#software-archive",
-            "componentId": "software-archive",
-            "mediaType": "application/zip",
+            "@id": f"#{filename}",
+            "componentId": filename,
+            "mediaType": guessed_media_type or "application/octet-stream",
         })
-
-    if documentation_pdf_url:
-        components.append({
-            "@id": f"#documentation",
-            "componentId": f"documentation",
-            "mediaType": "application/pdf"
-        })
+        existing_component_ids.add(filename)
+    if not existing_component_ids:
+        if download_url:
+            components.append({
+                "@id": "#software-archive",
+                "componentId": "software-archive",
+                "mediaType": "application/zip",
+            })
+        if documentation_pdf_url:
+            components.append({
+                "@id": "#documentation.pdf",
+                "componentId": "documentation.pdf",
+                "mediaType": "application/pdf",
+            })
     if components:
         kernel["fdo:hasComponent"] = components
 
