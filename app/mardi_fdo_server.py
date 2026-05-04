@@ -13,6 +13,10 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
     _logger = logging.getLogger(_name)
     _logger.handlers = [_handler]
     _logger.propagate = False
+
+logger = logging.getLogger(__name__)
+logger.handlers = [_handler]
+logger.propagate = False
 from typing import Any, Dict
 
 import httpx
@@ -699,7 +703,14 @@ def get_fdo(object_id: str):
 
     try:
         entity = fetch_entity(qid)
+    except httpx.ReadTimeout:
+        logger.error("Timeout fetching %s from MW API (timeout=5s)", qid)
+        raise HTTPException(status_code=504, detail=f"Upstream timeout fetching {qid}")
+    except httpx.HTTPStatusError as exc:
+        logger.error("MW API returned %s for %s", exc.response.status_code, qid)
+        raise HTTPException(status_code=502, detail=f"Upstream error for {qid}: {exc.response.status_code}")
     except Exception as exc:
+        logger.exception("Unexpected error fetching %s: %s", qid, exc)
         raise
 
     return to_fdo(qid, entity)
