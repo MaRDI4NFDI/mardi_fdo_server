@@ -68,7 +68,7 @@ def test_author_fdo_structure(mock_fetch):
     # kernel
     kernel = data["kernel"]
     assert kernel["@id"] == data["@id"]
-    assert kernel["digitalObjectType"] == "https://schema.org/Person"
+    assert kernel["digitalObjectType"] == "https://fdo.portal.mardi4nfdi.de/fdo/types/Person"
     assert kernel["primaryIdentifier"] == "mardi:Q999999"
     assert kernel["kernelVersion"] == "v1"
     assert kernel["immutable"] is True

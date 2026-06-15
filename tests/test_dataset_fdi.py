@@ -58,7 +58,7 @@ def test_dataset_components_from_storage_qualifiers(mock_fetch):
 
     data = resp.json()
     assert data["@type"] == "DigitalObject"
-    assert data["kernel"]["digitalObjectType"] == "https://schema.org/Dataset"
+    assert data["kernel"]["digitalObjectType"] == "https://fdo.portal.mardi4nfdi.de/fdo/types/Dataset"
 
     components = data["kernel"].get("fdo:hasComponent", [])
     component_ids = {component["componentId"] for component in components}

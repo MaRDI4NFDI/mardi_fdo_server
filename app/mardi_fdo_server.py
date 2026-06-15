@@ -32,7 +32,8 @@ from fdo_schemas.software_sourcecode import build_software_sourcecode_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
 from app.fdo_config import QID_P31_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI, \
-    QID_P1460_TYPE_MAP, DOIP_IRI
+    QID_P1460_TYPE_MAP, DOIP_IRI, FDO_TYPE_BASE_URI
+from app.type_registry import TYPE_REGISTRY
 
 MW_API = "https://portal.mardi4nfdi.de/w/api.php"
 KERNEL_VERSION = "v1"
@@ -129,7 +130,8 @@ def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
     kernel = {
         "@id": fdo_id,
-        "digitalObjectType": "https://schema.org/ScholarlyArticle",
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}ScholarlyArticle",
+        "seeAlso": "https://schema.org/ScholarlyArticle",
         "primaryIdentifier": f"mardi:{qid}",
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
@@ -190,7 +192,8 @@ def to_fdo_person(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
     kernel = {
         "@id": fdo_id,
-        "digitalObjectType": "https://schema.org/Person",
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}Person",
+        "seeAlso": "https://schema.org/Person",
         "primaryIdentifier": f"mardi:{qid}",
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
@@ -251,7 +254,8 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
     kernel = {
         "@id": fdo_id,
-        "digitalObjectType": "https://schema.org/Dataset",
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}Dataset",
+        "seeAlso": "https://schema.org/Dataset",
         "primaryIdentifier": f"mardi:{qid}",
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
@@ -368,7 +372,8 @@ def to_fdo_workflow(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 
     kernel = {
         "@id": fdo_id,
-        "digitalObjectType": "https://schema.org/Workflow",
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}Workflow",
+        "seeAlso": "https://schema.org/Workflow",
         "primaryIdentifier": f"mardi:{qid}",
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
@@ -468,7 +473,8 @@ def to_fdo_software_application(qid: str, entity: Dict[str, Any]) -> Dict[str, A
 
     kernel = {
         "@id": fdo_id,
-        "digitalObjectType": "https://schema.org/SoftwareApplication",
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}SoftwareApplication",
+        "seeAlso": "https://schema.org/SoftwareApplication",
         "primaryIdentifier": f"mardi:{qid}",
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
@@ -541,7 +547,8 @@ def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, An
 
     kernel = {
         "@id": fdo_id,
-        "digitalObjectType": "https://schema.org/SoftwareSourceCode",
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}SoftwareSourceCode",
+        "seeAlso": "https://schema.org/SoftwareSourceCode",
         "primaryIdentifier": f"mardi:{qid}",
         "kernelVersion": KERNEL_VERSION,
         "immutable": True,
@@ -691,6 +698,45 @@ async def root() -> HTMLResponse:
     </html>
     """
     return HTMLResponse(content=body)
+
+
+@app.get("/fdo/types/{type_id}")
+def get_fdo_type(type_id: str):
+    """Return the type FDO for a MaRDI-owned digital object type.
+
+    The returned document contains ``propertyMappings``, a machine-readable
+    table mapping Schema.org field names to Wikibase P-IDs. Clients use this
+    to translate field names into the P-ID keys expected by the UPDATE handler.
+    """
+    if type_id not in TYPE_REGISTRY:
+        raise HTTPException(status_code=404, detail=f"Type '{type_id}' not found in MaRDI type registry")
+
+    entry = TYPE_REGISTRY[type_id]
+    type_uri = f"{FDO_TYPE_BASE_URI}{type_id}"
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/",
+            },
+        ],
+        "@id": type_uri,
+        "@type": "DigitalObjectType",
+        "kernel": {
+            "@id": type_uri,
+            "digitalObjectType": f"{FDO_TYPE_BASE_URI}FDOType",
+            "primaryIdentifier": f"mardi:types/{type_id}",
+            "kernelVersion": KERNEL_VERSION,
+            "immutable": True,
+        },
+        "label": entry["label"],
+        "description": entry["description"],
+        "seeAlso": entry["seeAlso"],
+        "propertyMappings": entry["propertyMappings"],
+    }
 
 
 @app.get("/fdo/{object_id}")

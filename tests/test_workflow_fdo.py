@@ -86,7 +86,7 @@ def test_workflow_type_routing_via_p31(mock_fetch):
 
     data = resp.json()
     assert data["@type"] == "DigitalObject"
-    assert data["kernel"]["digitalObjectType"] == "https://schema.org/Workflow"
+    assert data["kernel"]["digitalObjectType"] == "https://fdo.portal.mardi4nfdi.de/fdo/types/Workflow"
 
 
 @patch("app.mardi_fdo_server.fetch_entity")
@@ -97,7 +97,7 @@ def test_workflow_type_routing_via_p1460(mock_fetch):
     assert resp.status_code == 200
 
     data = resp.json()
-    assert data["kernel"]["digitalObjectType"] == "https://schema.org/Workflow"
+    assert data["kernel"]["digitalObjectType"] == "https://fdo.portal.mardi4nfdi.de/fdo/types/Workflow"
 
 
 # ---------------------------------------------------------------------------
