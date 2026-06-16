@@ -61,11 +61,13 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "A computational workflow in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/Workflow",
         "propertyMappings": {
-            "creator":       {"pid": "P16",  "type": "item",   "multi": True},
-            "datePublished": {"pid": "P28",  "type": "time",   "multi": False},
-            "license":       {"pid": "P163", "type": "item",   "multi": True},
-            "citation":      {"pid": "P286", "type": "item",   "multi": True,  "note": "described by"},
-            "zenodoId":      {"pid": "P227", "type": "string", "multi": False},
+            "creator":           {"pid": "P16",   "type": "item",   "multi": True},
+            "datePublished":     {"pid": "P28",   "type": "time",   "multi": False},
+            "license":           {"pid": "P163",  "type": "item",   "multi": True},
+            "citation":          {"pid": "P286",  "type": "item",   "multi": True,  "note": "described by"},
+            "zenodoId":          {"pid": "P227",  "type": "string", "multi": False},
+            "problem_statement": {"pid": "P1604", "type": "string",           "multi": False},
+            "summary":           {"pid": "P1638", "type": "monolingualtext", "multi": False},
         },
     },
     "Person": {

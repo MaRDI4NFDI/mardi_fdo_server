@@ -6,7 +6,7 @@ from typing import Dict, Any, Tuple, List
 
 from app.fdo_config import FDO_IRI
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
-    schema_refs_from_ids, extract_qualifiers_for_item
+    schema_refs_from_ids, extract_qualifiers_for_item, extract_monolingualtext_claim
 
 
 def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
@@ -36,6 +36,8 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
 
     zenodo_id = extract_string_claim(claims, "P227") or ""
+    problem_statement = extract_string_claim(claims, "P1604") or ""
+    summary = extract_monolingualtext_claim(claims, "P1638") or ""
 
     profile = {
         "@context": "https://schema.org/",
@@ -90,6 +92,12 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
 
     if zenodo_id:
         profile.setdefault("sameAs", []).append(f"https://zenodo.org/record/{zenodo_id}")
+
+    if problem_statement:
+        profile["problem_statement"] = problem_statement
+
+    if summary:
+        profile["summary"] = summary
 
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)
