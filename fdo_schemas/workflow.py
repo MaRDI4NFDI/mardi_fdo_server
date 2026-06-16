@@ -36,7 +36,6 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
 
     zenodo_id = extract_string_claim(claims, "P227") or ""
-    problem_statement = extract_string_claim(claims, "P1604") or ""
     description_long = extract_string_claim(claims, "P1961") or ""
 
     profile = {
@@ -92,9 +91,6 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
 
     if zenodo_id:
         profile.setdefault("sameAs", []).append(f"https://zenodo.org/record/{zenodo_id}")
-
-    if problem_statement:
-        profile["problem_statement"] = problem_statement
 
     if description_long:
         profile["description_long"] = description_long
