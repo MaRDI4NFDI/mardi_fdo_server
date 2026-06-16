@@ -91,29 +91,6 @@ def normalize_created_modified(entity: Dict[str, Any]) -> Tuple[Optional[str], s
     return created, modified
 
 
-def extract_monolingualtext_claim(claims: Dict[str, Any], prop: str, lang: str = "en") -> Optional[str]:
-    """Return the text of the first monolingualtext value for the given property.
-
-    Args:
-        claims: MediaWiki claims block.
-        prop: Property id whose monolingualtext value should be returned.
-        lang: Language code to match (default ``"en"``).
-
-    Returns:
-        Text string or ``None`` if absent or language does not match.
-    """
-    statements = claims.get(prop)
-    if not statements:
-        return None
-    datavalue = statements[0].get("mainsnak", {}).get("datavalue")
-    if not datavalue:
-        return None
-    value = datavalue.get("value", {})
-    if value.get("language") == lang:
-        return value.get("text")
-    return None
-
-
 def extract_qualifiers_for_item(claims: Dict[str, Any], prop: str, target_item_id: str) -> Dict[str, Any]:
     """Extract qualifiers from a specific property statement for a target item.
 
