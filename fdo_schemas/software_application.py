@@ -9,6 +9,7 @@ from app.mardi_item_helper import (
     extract_item_ids,
     extract_qualifiers_for_item,
     extract_string_claim,
+    extract_string_claims,
     extract_time_claim,
     schema_refs_from_ids,
 )
@@ -34,13 +35,17 @@ def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tupl
     license_ids = extract_item_ids(claims, "P163")
     operating_system_ids = extract_item_ids(claims, "P306") # TODO: Find correct pid
     described_by_ids = extract_item_ids(claims, "P286")
+    similar_software_ids = extract_item_ids(claims, "P1458")
     publication_date = extract_time_claim(claims, "P28") or ""
     software_version = extract_string_claim(claims, "P132") or ""
     programming_language = extract_string_claim(claims, "P114") or ""
     software_heritage_id = extract_string_claim(claims, "P1454") or ""
     repository_url = extract_string_claim(claims, "P339") or ""
+    official_website = extract_string_claim(claims, "P29") or ""
     download_url = extract_string_claim(claims, "P205") or ""
     doi_value = extract_string_claim(claims, "P27") or ""
+    swmath_id = extract_string_claim(claims, "P13") or ""
+    msc_codes = extract_string_claims(claims, "P226")
 
     profile: Dict[str, Any] = {
         "@context": "https://schema.org/",
@@ -76,6 +81,9 @@ def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tupl
         }
         profile["distribution"] = [distribution]
 
+    if official_website and official_website != repository_url:
+        profile.setdefault("sameAs", []).append(official_website)
+
     if doi_value:
         doi_url = f"https://doi.org/{doi_value}"
         profile["identifier"] = {
@@ -86,8 +94,25 @@ def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tupl
         }
         profile.setdefault("sameAs", []).append(doi_url)
 
+    if swmath_id:
+        profile.setdefault("additionalProperty", []).append({
+            "@type": "PropertyValue",
+            "propertyID": "swMATH",
+            "value": swmath_id,
+            "url": f"https://swmath.org/software/{swmath_id}",
+        })
+
+    if software_heritage_id:
+        profile["softwareHeritageId"] = software_heritage_id
+
+    if msc_codes:
+        profile["mathematicsSubjectClassification"] = msc_codes
+
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)
+
+    if similar_software_ids:
+        profile["similarSoftware"] = schema_refs_from_ids(similar_software_ids)
 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
     has_components_at_storage: Dict[str, Any] = {}

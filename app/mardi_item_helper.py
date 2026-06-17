@@ -25,6 +25,26 @@ def extract_item_ids(claims: Dict[str, Any], prop: str) -> List[str]:
     return ids
 
 
+def extract_string_claims(claims: Dict[str, Any], prop: str) -> List[str]:
+    """Return all string literals for the given property.
+
+    Args:
+        claims: MediaWiki claims block.
+        prop: Property id whose literal values should be returned.
+
+    Returns:
+        List of all string literals (may be empty).
+    """
+    values: List[str] = []
+    for statement in claims.get(prop, []):
+        datavalue = statement.get("mainsnak", {}).get("datavalue")
+        if datavalue and datavalue.get("type") == "string":
+            val = datavalue.get("value")
+            if val:
+                values.append(val)
+    return values
+
+
 def extract_string_claim(claims: Dict[str, Any], prop: str) -> Optional[str]:
     """Return the first string literal for the given property.
 

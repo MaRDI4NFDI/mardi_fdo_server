@@ -256,6 +256,103 @@ def test_software_application_multiple_p1828_all_emitted(mock_fetch):
 
 
 # ---------------------------------------------------------------------------
+# SoftwareApplication profile fields
+# ---------------------------------------------------------------------------
+
+def _item_claim(qid: str) -> dict:
+    return {"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": qid}}}}
+
+def _string_claim(value: str) -> dict:
+    return {"mainsnak": {"datavalue": {"type": "string", "value": value}}}
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_software_application_similar_software(mock_fetch):
+    """P1458 (similar software) appears in profile.similarSoftware as entity refs."""
+    entity = _software_application_entity()
+    entity["claims"]["P1458"] = [_item_claim("Q100"), _item_claim("Q101")]
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9033")
+    assert resp.status_code == 200
+    similar = resp.json()["profile"].get("similarSoftware", [])
+    ids = {e["@id"] for e in similar}
+    assert "https://portal.mardi4nfdi.de/entity/Q100" in ids
+    assert "https://portal.mardi4nfdi.de/entity/Q101" in ids
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_software_application_software_heritage_id(mock_fetch):
+    """P1454 (Software Heritage ID) appears in profile.softwareHeritageId."""
+    entity = _software_application_entity()
+    entity["claims"]["P1454"] = [_string_claim("swh:1:snp:abc123")]
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9034")
+    assert resp.status_code == 200
+    assert resp.json()["profile"].get("softwareHeritageId") == "swh:1:snp:abc123"
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_software_application_swmath_id(mock_fetch):
+    """P13 (swMATH ID) appears in profile.additionalProperty."""
+    entity = _software_application_entity()
+    entity["claims"]["P13"] = [_string_claim("16108")]
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9035")
+    assert resp.status_code == 200
+    props = resp.json()["profile"].get("additionalProperty", [])
+    swmath = next((p for p in props if p.get("propertyID") == "swMATH"), None)
+    assert swmath is not None
+    assert swmath["value"] == "16108"
+    assert "swmath.org" in swmath["url"]
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_software_application_msc_codes(mock_fetch):
+    """P226 (MSC codes) appear in profile.mathematicsSubjectClassification."""
+    entity = _software_application_entity()
+    entity["claims"]["P226"] = [_string_claim("49"), _string_claim("65"), _string_claim("90")]
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9036")
+    assert resp.status_code == 200
+    msc = resp.json()["profile"].get("mathematicsSubjectClassification", [])
+    assert "49" in msc
+    assert "65" in msc
+    assert "90" in msc
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_software_application_official_website_in_same_as(mock_fetch):
+    """P29 (official website) is added to sameAs when different from codeRepository."""
+    entity = _software_application_entity()
+    entity["claims"]["P339"] = [_string_claim("https://github.com/org/repo")]
+    entity["claims"]["P29"] = [_string_claim("https://example.org/project")]
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9037")
+    assert resp.status_code == 200
+    same_as = resp.json()["profile"].get("sameAs", [])
+    assert "https://example.org/project" in same_as
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_software_application_official_website_same_as_repo_not_duplicated(mock_fetch):
+    """P29 identical to P339 is not added to sameAs."""
+    entity = _software_application_entity()
+    entity["claims"]["P339"] = [_string_claim("https://github.com/org/repo")]
+    entity["claims"]["P29"] = [_string_claim("https://github.com/org/repo")]
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9038")
+    assert resp.status_code == 200
+    same_as = resp.json()["profile"].get("sameAs", [])
+    assert same_as.count("https://github.com/org/repo") == 0
+
+
+# ---------------------------------------------------------------------------
 # SoftwareSourceCode fallbacks and P1828 override
 # ---------------------------------------------------------------------------
 
