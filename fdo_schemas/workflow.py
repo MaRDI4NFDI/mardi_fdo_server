@@ -41,6 +41,7 @@ def build_workflow_profile(
 
     # Authors
     author_ids = extract_item_ids(claims, "P16")
+    author_name = extract_string_claim(claims, "P43")
 
     # Properties
     label = entity.get("labels", {}).get("en", {}).get("value", qid)
@@ -67,7 +68,10 @@ def build_workflow_profile(
         profile["datePublished"] = publication_date
 
     if author_ids:
-        profile["creator"] = schema_refs_from_ids(author_ids)
+        profile["author"] = schema_refs_from_ids(author_ids)
+
+    if author_name:
+        profile["authorName"] = author_name
 
     if license_ids:
         profile["license"] = schema_refs_from_ids(license_ids)
