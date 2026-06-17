@@ -45,7 +45,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "A dataset in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/Dataset",
         "propertyMappings": {
-            "creator":        {"pid": "P16",   "type": "item",   "multi": True},
+            "author":         {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":     {"pid": "P43",   "type": "string", "multi": False},
             "datePublished":  {"pid": "P28",   "type": "time",   "multi": False},
             "license":        {"pid": "P163",  "type": "item",   "multi": True},
@@ -88,7 +88,8 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "A software application in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/SoftwareApplication",
         "propertyMappings": {
-            "creator":                          {"pid": "P16",   "type": "item",   "multi": True},
+            "author":                           {"pid": "P16",   "type": "item",   "multi": True},
+            "authorName":                       {"pid": "P43",   "type": "string", "multi": False},
             "license":                          {"pid": "P163",  "type": "item",   "multi": True},
             "operatingSystem":                  {"pid": "P306",  "type": "item",   "multi": True},
             "citation":                         {"pid": "P286",  "type": "item",   "multi": True},
@@ -110,7 +111,8 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "description": "Software source code in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/SoftwareSourceCode",
         "propertyMappings": {
-            "creator":             {"pid": "P16",   "type": "item",   "multi": True},
+            "author":              {"pid": "P16",   "type": "item",   "multi": True},
+            "authorName":          {"pid": "P43",   "type": "string", "multi": False},
             "license":             {"pid": "P163",  "type": "item",   "multi": True},
             "citation":            {"pid": "P286",  "type": "item",   "multi": True},
             "datePublished":       {"pid": "P28",   "type": "time",   "multi": False},

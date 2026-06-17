@@ -61,7 +61,7 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
         profile["datePublished"] = publication_date
 
     if author_ids:
-        profile["creator"] = schema_refs_from_ids(author_ids)
+        profile["author"] = schema_refs_from_ids(author_ids)
 
     if author_name:
         profile["authorName"] = author_name

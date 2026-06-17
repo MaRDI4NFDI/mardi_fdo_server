@@ -31,6 +31,7 @@ def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple
     description = entity.get("descriptions", {}).get("en", {}).get("value", "")
 
     author_ids = extract_item_ids(claims, "P16")
+    author_name = extract_string_claim(claims, "P43")
     license_ids = extract_item_ids(claims, "P163")
     described_by_ids = extract_item_ids(claims, "P286")
     publication_date = extract_time_claim(claims, "P28") or ""
@@ -54,7 +55,10 @@ def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple
     }
 
     if author_ids:
-        profile["creator"] = schema_refs_from_ids(author_ids)
+        profile["author"] = schema_refs_from_ids(author_ids)
+
+    if author_name:
+        profile["authorName"] = author_name
 
     if license_ids:
         profile["license"] = schema_refs_from_ids(license_ids)

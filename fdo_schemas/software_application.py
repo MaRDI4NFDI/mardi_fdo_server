@@ -32,6 +32,7 @@ def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tupl
     description = entity.get("descriptions", {}).get("en", {}).get("value", "")
 
     author_ids = extract_item_ids(claims, "P16")
+    author_name = extract_string_claim(claims, "P43")
     license_ids = extract_item_ids(claims, "P163")
     operating_system_ids = extract_item_ids(claims, "P306") # TODO: Find correct pid
     described_by_ids = extract_item_ids(claims, "P286")
@@ -57,7 +58,10 @@ def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tupl
     }
 
     if author_ids:
-        profile["creator"] = schema_refs_from_ids(author_ids)
+        profile["author"] = schema_refs_from_ids(author_ids)
+
+    if author_name:
+        profile["authorName"] = author_name
 
     if license_ids:
         profile["license"] = schema_refs_from_ids(license_ids)
