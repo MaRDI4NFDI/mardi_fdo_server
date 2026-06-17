@@ -26,6 +26,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "seeAlso": "https://schema.org/ScholarlyArticle",
         "propertyMappings": {
             "author":        {"pid": "P16",   "type": "item",   "multi": True},
+            "authorName":    {"pid": "P43",   "type": "string", "multi": False},
             "datePublished": {"pid": "P28",   "type": "time",   "multi": False},
             "identifier":    {"pid": "P27",   "type": "string", "multi": False, "note": "DOI"},
             "license":       {"pid": "P275",  "type": "item",   "multi": True},
@@ -45,6 +46,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "seeAlso": "https://schema.org/Dataset",
         "propertyMappings": {
             "creator":        {"pid": "P16",   "type": "item",   "multi": True},
+            "authorName":     {"pid": "P43",   "type": "string", "multi": False},
             "datePublished":  {"pid": "P28",   "type": "time",   "multi": False},
             "license":        {"pid": "P163",  "type": "item",   "multi": True},
             "identifier":     {"pid": "P27",   "type": "string", "multi": False, "note": "DOI"},

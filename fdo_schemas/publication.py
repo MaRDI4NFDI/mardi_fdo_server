@@ -23,6 +23,7 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     label = entity.get("labels", {}).get("en", {}).get("value", qid)
     description = entity.get("descriptions", {}).get("en", {}).get("value", "")
     author_ids = extract_item_ids(claims, "P16")
+    author_name = extract_string_claim(claims, "P43")
     citation_ids = extract_item_ids(claims, "P223")
     container_ids = extract_item_ids(claims, "P1433")
     subject_ids = extract_item_ids(claims, "P226")
@@ -52,6 +53,8 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
 
     if author_ids:
         profile["author"] = schema_refs_from_ids(author_ids)
+    if author_name:
+        profile["authorName"] = author_name
     if container_ids:
         profile["isPartOf"] = schema_refs_from_ids(container_ids)
     if publisher_ids:
