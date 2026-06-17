@@ -2,14 +2,29 @@
 Schema.org Workflow helpers for MaRDI FDO server.
 """
 import mimetypes
-from typing import Dict, Any, Tuple, List
+from typing import Any, Callable, Dict, Optional, Tuple, List
 
-from app.fdo_config import FDO_IRI
+from app.fdo_config import FDO_IRI, ENTITY_IRI, QID_P31_TYPE_MAP, QID_P1460_TYPE_MAP, SCHEMA_TYPE_TO_TYPE_ID
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
     schema_refs_from_ids, extract_qualifiers_for_item
 
 
-def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+def _schema_type_short(entity: Dict[str, Any]) -> Optional[str]:
+    claims = entity.get("claims", {})
+    for prop, qid_map in (("P31", QID_P31_TYPE_MAP), ("P1460", QID_P1460_TYPE_MAP)):
+        for stmt in claims.get(prop, []):
+            qid = stmt.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id", "")
+            schema_type = qid_map.get(qid)
+            if schema_type:
+                return SCHEMA_TYPE_TO_TYPE_ID.get(schema_type)
+    return None
+
+
+def build_workflow_profile(
+    qid: str,
+    entity: Dict[str, Any],
+    fetch_fn: Optional[Callable[[str], Dict[str, Any]]] = None,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Construct a minimal schema.org Workflow profile from MediaWiki claims.
 
@@ -33,6 +48,7 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
     publication_date = extract_time_claim(claims, "P28") or ""
     license_ids = extract_item_ids(claims, "P163")
     described_by_ids = extract_item_ids(claims, "P286") or []
+    uses_ids = extract_item_ids(claims, "P557") or []
     storage_item_ids = extract_item_ids(claims, "P1827") or []
 
     zenodo_id = extract_string_claim(claims, "P227") or ""
@@ -97,5 +113,25 @@ def build_workflow_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, 
 
     if described_by_ids:
         profile["citation"] = schema_refs_from_ids(described_by_ids)
+
+    if uses_ids:
+        if fetch_fn is not None:
+            uses_entries = []
+            for uid in uses_ids:
+                entry: Dict[str, Any] = {"@id": ENTITY_IRI + uid}
+                try:
+                    linked = fetch_fn(uid)
+                    name = linked.get("labels", {}).get("en", {}).get("value")
+                    schema_type = _schema_type_short(linked)
+                    if schema_type:
+                        entry["@type"] = schema_type
+                    if name:
+                        entry["name"] = name
+                except Exception:
+                    pass
+                uses_entries.append(entry)
+            profile["uses"] = uses_entries
+        else:
+            profile["uses"] = schema_refs_from_ids(uses_ids)
 
     return profile, has_components_at_storage

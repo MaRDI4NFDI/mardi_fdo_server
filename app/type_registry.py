@@ -65,6 +65,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "datePublished":     {"pid": "P28",   "type": "time",   "multi": False},
             "license":           {"pid": "P163",  "type": "item",   "multi": True},
             "citation":          {"pid": "P286",  "type": "item",   "multi": True,  "note": "described by"},
+            "uses":              {"pid": "P557",  "type": "item",   "multi": True,  "note": "dataset or resource used by this workflow"},
             "zenodoId":          {"pid": "P227",  "type": "string", "multi": False},
             "description_long":  {"pid": "P1961", "type": "string", "multi": False},
         },

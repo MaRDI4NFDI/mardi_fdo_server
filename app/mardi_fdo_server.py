@@ -366,7 +366,7 @@ def to_fdo_workflow(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
             - Provenance markers for timestamp and attribution
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, has_components_at_storage = build_workflow_profile(qid, entity)
+    profile, has_components_at_storage = build_workflow_profile(qid, entity, fetch_fn=fetch_entity)
 
     created, modified = normalize_created_modified(entity)
 

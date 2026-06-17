@@ -248,6 +248,37 @@ def test_workflow_zenodo_same_as(mock_fetch):
 
 
 @patch("app.mardi_fdo_server.fetch_entity")
+def test_workflow_uses_enriched(mock_fetch):
+    """P557 (uses) appears in profile.uses with @type and name from the linked entity."""
+    linked_entity = {
+        "labels": {"en": {"value": "RKI covid case numbers"}},
+        "descriptions": {},
+        "claims": {
+            "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56885"}}}}]
+        },
+        "modified": "2026-01-01T00:00:00Z",
+    }
+
+    def _side_effect(qid):
+        if qid == "Q6830878":
+            return linked_entity
+        return _workflow_entity_p31({
+            "P557": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q6830878"}}}}]
+        })
+
+    mock_fetch.side_effect = _side_effect
+
+    resp = client.get("/fdo/Q9000012")
+    assert resp.status_code == 200
+
+    uses = resp.json()["profile"].get("uses", [])
+    assert len(uses) == 1
+    assert uses[0]["@id"] == "https://portal.mardi4nfdi.de/entity/Q6830878"
+    assert uses[0].get("@type") == "Dataset"
+    assert uses[0].get("name") == "RKI covid case numbers"
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
 def test_workflow_profile_base_fields(mock_fetch):
     mock_fetch.return_value = _workflow_entity_p31()
 
