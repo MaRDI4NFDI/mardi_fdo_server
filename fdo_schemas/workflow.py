@@ -53,7 +53,7 @@ def build_workflow_profile(
     storage_item_ids = extract_item_ids(claims, "P1827") or []
 
     zenodo_id = extract_string_claim(claims, "P227") or ""
-    description_long = extract_string_claim(claims, "P1961") or ""
+    description_long = extract_string_claim(claims, "P1459") or ""
 
     profile = {
         "@context": "https://schema.org/",
