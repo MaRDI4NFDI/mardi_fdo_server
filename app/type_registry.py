@@ -125,4 +125,21 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "cranName":            {"pid": "P229",  "type": "string", "multi": False},
         },
     },
+    "Formula": {
+        "label": "Formula",
+        "description": "A mathematical formula in the MaRDI knowledge graph.",
+        "seeAlso": "https://schema.org/Formula",
+        "propertyMappings": {
+            "mathExpression":          {"pid": "P989",  "type": "string", "multi": False, "note": "defining formula (math string); P14 used as fallback for DLMF-sourced items"},
+            "description_long":        {"pid": "P1459", "type": "string", "multi": False},
+            "symbol":                  {"pid": "P983",  "type": "string", "multi": True,  "note": "symbol notation (math string); qualifier P984 for the concept it represents"},
+            "definesSymbol":           {"pid": "P3",    "type": "item",   "multi": True},
+            "identifier/dlmf":         {"pid": "P2",    "type": "string", "multi": False, "note": "DLMF equation ID"},
+            "identifier/wikidata":     {"pid": "P12",   "type": "string", "multi": False, "note": "Wikidata QID"},
+            "namedAfter":              {"pid": "P558",  "type": "item",   "multi": True},
+            "about":                   {"pid": "P1495", "type": "item",   "multi": True,  "note": "mathematical community or subject area"},
+            "hasPart":                 {"pid": "P1560", "type": "item",   "multi": True,  "note": "contained sub-formulas; qualifier P560 for the role"},
+            "sameAs":                  {"pid": "P1690", "type": "url",    "multi": True,  "note": "related external resource"},
+        },
+    },
 }

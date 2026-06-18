@@ -20,6 +20,7 @@ SCHEMA_TYPE_TO_TYPE_ID: dict = {
     "schema:Workflow":            "Workflow",
     "schema:SoftwareApplication": "SoftwareApplication",
     "schema:SoftwareSourceCode":  "SoftwareSourceCode",
+    "schema:Formula":             "Formula",
 }
 
 # Maps Wikibase QIDs to internal/schema.org type strings, based on P31 ("instance of").
@@ -37,6 +38,7 @@ QID_P1460_TYPE_MAP = {
     "Q5976450": "schema:SoftwareApplication",
     "Q5984635": "schema:Dataset",
     "Q6534216": "schema:Workflow",
+    "Q5981696": "schema:Formula",
 }
 
 

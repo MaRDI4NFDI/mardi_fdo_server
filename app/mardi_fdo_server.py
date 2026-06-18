@@ -31,6 +31,7 @@ from fdo_schemas.software_application import build_software_application_profile
 from fdo_schemas.software_sourcecode import build_software_sourcecode_profile
 from fdo_schemas.publication import build_scholarly_article_profile
 from fdo_schemas.person import build_author_payload
+from fdo_schemas.formula import build_formula_profile
 from app.fdo_config import QID_P31_TYPE_MAP, JSONLD_CONTEXT, FDO_IRI, FDO_ACCESS_IRI, ENTITY_IRI, \
     QID_P1460_TYPE_MAP, DOIP_IRI, FDO_TYPE_BASE_URI
 from app.type_registry import TYPE_REGISTRY
@@ -638,6 +639,43 @@ def to_fdo_minimal(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         "prov:wasAttributedTo": "MaRDI Knowledge Graph",
     }
 
+def to_fdo_formula(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
+    fdo_id = f"{FDO_IRI}{qid}"
+    created, modified = normalize_created_modified(entity)
+    profile = build_formula_profile(qid, entity)
+
+    kernel = {
+        "@id": fdo_id,
+        "digitalObjectType": f"{FDO_TYPE_BASE_URI}Formula",
+        "seeAlso": "https://schema.org/Formula",
+        "primaryIdentifier": f"mardi:{qid}",
+        "kernelVersion": KERNEL_VERSION,
+        "immutable": True,
+        "modified": modified,
+    }
+    if created:
+        kernel["created"] = created
+
+    return {
+        "@context": [
+            "https://w3id.org/fdo/context/v1",
+            {
+                "schema": "https://schema.org/",
+                "prov": "http://www.w3.org/ns/prov#",
+                "fdo": "https://w3id.org/fdo/vocabulary/",
+            },
+        ],
+        "@id": fdo_id,
+        "@type": "DigitalObject",
+        "kernel": kernel,
+        "profile": profile,
+        "provenance": {
+            "prov:generatedAtTime": modified,
+            "prov:wasAttributedTo": "MaRDI Knowledge Graph",
+        },
+    }
+
+
 # Local dispatcher mapping types to handler functions
 TYPE_HANDLER_MAP = {
     "schema:ScholarlyArticle": to_fdo_publication,
@@ -646,6 +684,7 @@ TYPE_HANDLER_MAP = {
     "schema:Workflow": to_fdo_workflow,
     "schema:SoftwareApplication": to_fdo_software_application,
     "schema:SoftwareSourceCode": to_fdo_software_sourcecode,
+    "schema:Formula": to_fdo_formula,
 }
 
 
