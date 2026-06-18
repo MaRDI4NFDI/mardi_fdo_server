@@ -19,6 +19,7 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     claims = entity.get("claims", {})
 
     arxiv_id = extract_string_claim(claims, "P21")
+    arxiv_classification = extract_string_claim(claims, "P22")
     pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf" if arxiv_id else None
 
     label = entity.get("labels", {}).get("en", {}).get("value", qid)
@@ -68,16 +69,24 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     if language_ids:
         profile["inLanguage"] = [f"{ENTITY_IRI}{lid}" for lid in language_ids]
 
+    same_as = []
     identifiers = []
     if doi_value:
         identifiers.append({"@type": "PropertyValue", "propertyID": "doi", "value": doi_value, "url": f"https://doi.org/{doi_value}"})
-        profile["sameAs"] = [f"https://doi.org/{doi_value}"]
+        same_as.append(f"https://doi.org/{doi_value}")
+    if arxiv_id:
+        identifiers.append({"@type": "PropertyValue", "propertyID": "arxiv", "value": arxiv_id, "url": f"https://arxiv.org/abs/{arxiv_id}"})
+        same_as.append(f"https://arxiv.org/abs/{arxiv_id}")
     if zbmath_de_number:
         identifiers.append({"@type": "PropertyValue", "propertyID": "zbmath-de", "value": zbmath_de_number, "url": f"https://zbmath.org/?q=an:{zbmath_de_number}"})
     if zbmath_open_id:
         identifiers.append({"@type": "PropertyValue", "propertyID": "zbmath-open", "value": zbmath_open_id})
     if identifiers:
         profile["identifier"] = identifiers[0] if len(identifiers) == 1 else identifiers
+    if same_as:
+        profile["sameAs"] = same_as
+    if arxiv_classification:
+        profile["arXivClassification"] = arxiv_classification
 
     if page_start:
         profile["pageStart"] = page_start

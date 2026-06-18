@@ -42,6 +42,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "citation":             {"pid": "P223",  "type": "item",   "multi": True},
             "comment":              {"pid": "P1448", "type": "string", "multi": False},
             "arxivId":              {"pid": "P21",   "type": "string", "multi": False},
+            "arXivClassification":  {"pid": "P22",   "type": "string", "multi": False, "note": "arXiv subject classification, e.g. 'math.OC'"},
         },
     },
     "Dataset": {
