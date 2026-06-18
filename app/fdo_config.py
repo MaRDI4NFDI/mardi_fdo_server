@@ -28,6 +28,7 @@ QID_P31_TYPE_MAP = {
     "Q57162": "schema:Person",
     "Q56885": "schema:Dataset",
     "Q57080": "schema:SoftwareSourceCode",
+    "Q56605": "schema:SoftwareSourceCode",
     "Q68657": "schema:Workflow",
 }
 
