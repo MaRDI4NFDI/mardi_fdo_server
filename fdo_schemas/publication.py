@@ -9,6 +9,7 @@ from app.mardi_item_helper import (
     extract_item_ids,
     extract_qualifiers_for_item,
     extract_string_claim,
+    extract_string_claims,
     extract_time_claim,
     schema_refs_from_ids,
 )
@@ -25,12 +26,15 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     author_ids = extract_item_ids(claims, "P16")
     author_name = extract_string_claim(claims, "P43")
     citation_ids = extract_item_ids(claims, "P223")
+    recommended_ids = extract_item_ids(claims, "P1643")
     container_ids = extract_item_ids(claims, "P1433")
-    subject_ids = extract_item_ids(claims, "P226")
+    msc_codes = extract_string_claims(claims, "P226")
     publisher_ids = extract_item_ids(claims, "P200")
     license_ids = extract_item_ids(claims, "P275")
     language_ids = extract_item_ids(claims, "P407")
-    keyword_ids = extract_item_ids(claims, "1450")
+    keywords = extract_string_claims(claims, "P1450")
+    zbmath_de_number = extract_string_claim(claims, "P1451")
+    zbmath_open_id = extract_string_claim(claims, "P225")
     publication_date = extract_time_claim(claims, "P28") or ""
     doi_value = extract_string_claim(claims, "P27") or ""
     page_range = extract_string_claim(claims, "P304")
@@ -59,19 +63,21 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
         profile["isPartOf"] = schema_refs_from_ids(container_ids)
     if publisher_ids:
         profile["publisher"] = schema_refs_from_ids(publisher_ids)
-    if subject_ids:
-        profile["about"] = schema_refs_from_ids(subject_ids)
+    if msc_codes:
+        profile["about"] = msc_codes
     if language_ids:
         profile["inLanguage"] = [f"{ENTITY_IRI}{lid}" for lid in language_ids]
 
+    identifiers = []
     if doi_value:
-        profile["identifier"] = {
-            "@type": "PropertyValue",
-            "propertyID": "doi",
-            "value": doi_value,
-            "url": f"https://doi.org/{doi_value}"
-        }
+        identifiers.append({"@type": "PropertyValue", "propertyID": "doi", "value": doi_value, "url": f"https://doi.org/{doi_value}"})
         profile["sameAs"] = [f"https://doi.org/{doi_value}"]
+    if zbmath_de_number:
+        identifiers.append({"@type": "PropertyValue", "propertyID": "zbmath-de", "value": zbmath_de_number, "url": f"https://zbmath.org/?q=an:{zbmath_de_number}"})
+    if zbmath_open_id:
+        identifiers.append({"@type": "PropertyValue", "propertyID": "zbmath-open", "value": zbmath_open_id})
+    if identifiers:
+        profile["identifier"] = identifiers[0] if len(identifiers) == 1 else identifiers
 
     if page_start:
         profile["pageStart"] = page_start
@@ -83,10 +89,12 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
         profile["license"] = schema_refs_from_ids(license_ids)
     if comment:
         profile["comment"] = comment
-    if keyword_ids:
-        profile["keyword"] = schema_refs_from_ids(keyword_ids)
+    if keywords:
+        profile["keywords"] = keywords
     if citation_ids:
         profile["citation"] = schema_refs_from_ids(citation_ids)
+    if recommended_ids:
+        profile["relatedLink"] = schema_refs_from_ids(recommended_ids)
 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
     has_components_at_storage: Dict[str, Any] = {}
