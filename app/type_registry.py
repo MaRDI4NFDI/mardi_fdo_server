@@ -39,6 +39,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "identifier/zbmath-de": {"pid": "P1451", "type": "string", "multi": False, "note": "zbMATH DE number"},
             "identifier/zbmath-open": {"pid": "P225", "type": "string", "multi": False, "note": "zbMATH Open document ID"},
             "relatedLink":          {"pid": "P1643", "type": "item",   "multi": True,  "note": "recommended / related articles"},
+            "hasPart":              {"pid": "P1560", "type": "item",   "multi": True,  "note": "formulas contained in this publication"},
             "citation":             {"pid": "P223",  "type": "item",   "multi": True},
             "comment":              {"pid": "P1448", "type": "string", "multi": False},
             "arxivId":              {"pid": "P21",   "type": "string", "multi": False},

@@ -72,3 +72,43 @@ def test_publication_fdo_structure(mock_fetch):
     prov = data["provenance"]
     assert "prov:generatedAtTime" in prov
     assert "prov:wasAttributedTo" in prov
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_publication_has_part_single(mock_fetch):
+    mock_fetch.return_value = {
+        "labels": {"en": {"value": "Test Article"}},
+        "descriptions": {"en": {"value": ""}},
+        "claims": {
+            "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56887"}}}}],
+            "P1560": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q9001"}}}}],
+        },
+        "modified": "2024-01-01T00:00:00Z",
+    }
+    resp = client.get("/fdo/Q111112")
+    assert resp.status_code == 200
+    profile = resp.json()["profile"]
+    assert profile["hasPart"] == [{"@id": "https://portal.mardi4nfdi.de/entity/Q9001"}]
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_publication_has_part_multiple(mock_fetch):
+    mock_fetch.return_value = {
+        "labels": {"en": {"value": "Test Article"}},
+        "descriptions": {"en": {"value": ""}},
+        "claims": {
+            "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56887"}}}}],
+            "P1560": [
+                {"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q9001"}}}},
+                {"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q9002"}}}},
+            ],
+        },
+        "modified": "2024-01-01T00:00:00Z",
+    }
+    resp = client.get("/fdo/Q111113")
+    assert resp.status_code == 200
+    profile = resp.json()["profile"]
+    assert profile["hasPart"] == [
+        {"@id": "https://portal.mardi4nfdi.de/entity/Q9001"},
+        {"@id": "https://portal.mardi4nfdi.de/entity/Q9002"},
+    ]

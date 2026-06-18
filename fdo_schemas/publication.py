@@ -28,6 +28,7 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     author_name = extract_string_claim(claims, "P43")
     citation_ids = extract_item_ids(claims, "P223")
     recommended_ids = extract_item_ids(claims, "P1643")
+    formula_ids = extract_item_ids(claims, "P1560")
     container_ids = extract_item_ids(claims, "P1433")
     msc_codes = extract_string_claims(claims, "P226")
     publisher_ids = extract_item_ids(claims, "P200")
@@ -104,6 +105,8 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
         profile["citation"] = schema_refs_from_ids(citation_ids)
     if recommended_ids:
         profile["relatedLink"] = schema_refs_from_ids(recommended_ids)
+    if formula_ids:
+        profile["hasPart"] = schema_refs_from_ids(formula_ids)
 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
     has_components_at_storage: Dict[str, Any] = {}
