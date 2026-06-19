@@ -144,6 +144,49 @@ def test_formula_p4_symbols(mock_fetch):
     assert symbols[0]["xmlId"] == "C1.S4.E4.m2adec"
 
 
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_formula_p983_p1962_string_represents(mock_fetch):
+    """P1962 qualifier on P983 produces a plain string represents value."""
+    entity = _formula_entity_p1460({
+        "P983": [
+            {
+                "mainsnak": {"datavalue": {"type": "string", "value": "y_n"}},
+                "qualifiers": {
+                    "P1962": [{"datavalue": {"type": "string", "value": "system output at step n"}}]
+                },
+            }
+        ]
+    })
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9990006")
+    symbols = resp.json()["profile"]["symbol"]
+    assert len(symbols) == 1
+    assert symbols[0]["notation"] == "y_n"
+    assert symbols[0]["represents"] == "system output at step n"
+
+
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_formula_p983_p984_takes_precedence_over_p1962(mock_fetch):
+    """P984 (item) takes precedence over P1962 (string) when both are present."""
+    entity = _formula_entity_p1460({
+        "P983": [
+            {
+                "mainsnak": {"datavalue": {"type": "string", "value": "Z"}},
+                "qualifiers": {
+                    "P984": [{"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q6775420"}}}],
+                    "P1962": [{"datavalue": {"type": "string", "value": "ignored string"}}],
+                },
+            }
+        ]
+    })
+    mock_fetch.return_value = entity
+
+    resp = client.get("/fdo/Q9990007")
+    symbols = resp.json()["profile"]["symbol"]
+    assert symbols[0]["represents"] == {"@id": "https://portal.mardi4nfdi.de/entity/Q6775420"}
+
+
 # ---------------------------------------------------------------------------
 # Identifiers
 # ---------------------------------------------------------------------------

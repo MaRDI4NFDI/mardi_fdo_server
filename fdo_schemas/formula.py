@@ -19,11 +19,18 @@ def _extract_p983_symbols(claims: Dict[str, Any]) -> List[Dict]:
         if not isinstance(notation, str):
             continue
         entry: Dict[str, Any] = {"notation": notation}
-        for q_val in stmt.get("qualifiers", {}).get("P984", []):
+        qualifiers = stmt.get("qualifiers", {})
+        for q_val in qualifiers.get("P984", []):
             dv = q_val.get("datavalue", {})
             if dv.get("type") == "wikibase-entityid":
                 entry["represents"] = {"@id": ENTITY_IRI + dv["value"]["id"]}
                 break
+        if "represents" not in entry:
+            for q_val in qualifiers.get("P1962", []):
+                dv = q_val.get("datavalue", {})
+                if isinstance(dv.get("value"), str):
+                    entry["represents"] = dv["value"]
+                    break
         symbols.append(entry)
     return symbols
 
