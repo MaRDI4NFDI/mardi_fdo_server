@@ -2,7 +2,7 @@
 Schema.org SoftwareSourceCode helpers for MaRDI FDO server.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.fdo_config import FDO_IRI
 from app.mardi_item_helper import (
@@ -11,11 +11,15 @@ from app.mardi_item_helper import (
     extract_string_claim,
     extract_string_claims,
     extract_time_claim,
-    schema_refs_from_ids,
+    schema_refs_from_ids, refs_for_field,
 )
 
 
-def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
+def build_software_application_profile(
+    qid: str,
+    entity: Dict[str, Any],
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
     """Construct a minimal schema.org SoftwareSourceCode profile.
 
     Args:
@@ -113,7 +117,7 @@ def build_software_application_profile(qid: str, entity: Dict[str, Any]) -> Tupl
         profile["mathematicsSubjectClassification"] = msc_codes
 
     if described_by_ids:
-        profile["citation"] = schema_refs_from_ids(described_by_ids)
+        profile["citation"] = refs_for_field("SoftwareApplication", "citation", described_by_ids, fetch_fn)
 
     if similar_software_ids:
         profile["similarSoftware"] = schema_refs_from_ids(similar_software_ids)

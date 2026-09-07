@@ -42,6 +42,16 @@ QID_P1460_TYPE_MAP = {
 }
 
 
+# Which reference fields are enriched is declared per field in
+# app/type_registry.py, as "embed": ["@type", "name"] on the propertyMappings
+# entry. That keeps the declaration in the same table clients already read from
+# the type FDO, instead of a second, invisible list here.
+
+# Hard ceiling on how many references a single field will enrich. Beyond this the
+# remaining references stay bare rather than fanning out an unbounded number of
+# lookups (a heavily-cited article can list hundreds).
+MAX_ENRICHED_REFS = 50
+
 # JSON-LD Context definition for FDO payloads.
 JSONLD_CONTEXT = [
     "https://w3id.org/fdo/context/v1",

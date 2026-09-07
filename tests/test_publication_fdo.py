@@ -112,3 +112,75 @@ def test_publication_has_part_multiple(mock_fetch):
         {"@id": "https://portal.mardi4nfdi.de/entity/Q9001"},
         {"@id": "https://portal.mardi4nfdi.de/entity/Q9002"},
     ]
+
+
+_CITED_DATASET = {
+    "labels": {"en": {"value": "RKI covid case numbers 03/2020 to 10/2020"}},
+    "claims": {
+        "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56885"}}}}]
+    },
+}
+_CITED_CODE = {
+    "labels": {"en": {"value": "Reproduce results from: Gaskin, Conrad et al. (2024); figure 3"}},
+    "claims": {
+        "P1460": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q6534216"}}}}]
+    },
+}
+
+
+def _article_citing(*qids):
+    return {
+        "labels": {"en": {"value": "Test Article"}},
+        "descriptions": {"en": {"value": ""}},
+        "claims": {
+            "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56887"}}}}],
+            "P223": [
+                {"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": q}}}}
+                for q in qids
+            ],
+        },
+        "modified": "2024-01-01T00:00:00Z",
+    }
+
+
+@patch(
+    "app.mardi_fdo_server.fetch_entities",
+    return_value={"Q6830878": _CITED_DATASET, "Q6830877": _CITED_CODE},
+)
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_publication_citation_enriched(mock_fetch, mock_batch):
+    """P223 (cites work) carries @type and name, so a client can tell code from data."""
+    mock_fetch.return_value = _article_citing("Q6830878", "Q6830877")
+
+    resp = client.get("/fdo/Q6830876")
+    assert resp.status_code == 200
+    citation = resp.json()["profile"]["citation"]
+
+    assert citation == [
+        {
+            "@id": "https://portal.mardi4nfdi.de/entity/Q6830878",
+            "@type": "Dataset",
+            "name": "RKI covid case numbers 03/2020 to 10/2020",
+        },
+        {
+            "@id": "https://portal.mardi4nfdi.de/entity/Q6830877",
+            "@type": "Workflow",
+            "name": "Reproduce results from: Gaskin, Conrad et al. (2024); figure 3",
+        },
+    ]
+    # Both references resolved in a single batched lookup.
+    assert mock_batch.call_count == 1
+    assert sorted(mock_batch.call_args[0][0]) == ["Q6830877", "Q6830878"]
+
+
+@patch("app.mardi_fdo_server.fetch_entities", return_value={})
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_publication_citation_bare_when_unresolvable(mock_fetch, _mock_batch):
+    """An unresolved reference keeps its @id rather than being dropped."""
+    mock_fetch.return_value = _article_citing("Q6830878")
+
+    resp = client.get("/fdo/Q6830876")
+    assert resp.status_code == 200
+    assert resp.json()["profile"]["citation"] == [
+        {"@id": "https://portal.mardi4nfdi.de/entity/Q6830878"}
+    ]

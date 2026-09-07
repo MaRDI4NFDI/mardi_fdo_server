@@ -2,7 +2,7 @@
 Schema.org ScholarlyArticle helpers for MaRDI FDO server.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.fdo_config import ENTITY_IRI
 from app.mardi_item_helper import (
@@ -11,11 +11,28 @@ from app.mardi_item_helper import (
     extract_string_claim,
     extract_string_claims,
     extract_time_claim,
+    refs_for_field,
     schema_refs_from_ids,
 )
 
 
-def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
+def build_scholarly_article_profile(
+    qid: str,
+    entity: Dict[str, Any],
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
+    """Construct a schema.org ScholarlyArticle profile from MediaWiki claims.
+
+    Args:
+        qid: PID/QID string.
+        entity: Raw entity dict from the KG, including labels and claims.
+        fetch_fn: Optional batched lookup used to enrich the reference fields
+            fields whose propertyMappings entry declares "embed".
+
+    Returns:
+        Tuple of the profile block, the arXiv PDF URL (if any) and the
+        storage qualifier information (P1827).
+    """
     claims = entity.get("claims", {})
 
     arxiv_id = extract_string_claim(claims, "P21")
@@ -62,7 +79,7 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     if author_name:
         profile["authorName"] = author_name
     if container_ids:
-        profile["isPartOf"] = schema_refs_from_ids(container_ids)
+        profile["isPartOf"] = refs_for_field("ScholarlyArticle", "isPartOf", container_ids, fetch_fn)
     if publisher_ids:
         profile["publisher"] = schema_refs_from_ids(publisher_ids)
     if msc_codes:
@@ -102,11 +119,11 @@ def build_scholarly_article_profile(qid: str, entity: Dict[str, Any]) -> Tuple[D
     if keywords:
         profile["keywords"] = keywords
     if citation_ids:
-        profile["citation"] = schema_refs_from_ids(citation_ids)
+        profile["citation"] = refs_for_field("ScholarlyArticle", "citation", citation_ids, fetch_fn)
     if recommended_ids:
-        profile["relatedLink"] = schema_refs_from_ids(recommended_ids)
+        profile["relatedLink"] = refs_for_field("ScholarlyArticle", "relatedLink", recommended_ids, fetch_fn)
     if formula_ids:
-        profile["hasPart"] = schema_refs_from_ids(formula_ids)
+        profile["hasPart"] = refs_for_field("ScholarlyArticle", "hasPart", formula_ids, fetch_fn)
 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
     has_components_at_storage: Dict[str, Any] = {}

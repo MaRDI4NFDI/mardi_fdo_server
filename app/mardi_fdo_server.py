@@ -17,7 +17,8 @@ for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
 logger = logging.getLogger(__name__)
 logger.handlers = [_handler]
 logger.propagate = False
-from typing import Any, Dict
+import time
+from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException, Response
@@ -75,6 +76,111 @@ def fetch_entity(qid: str) -> Dict[str, Any]:
     return entities[qid]
 
 
+# Linked-entity cache for reference enrichment, keyed per QID so that an entity
+# reached from several records is fetched once. Deliberately NOT an lru_cache on
+# the batch: batches rarely repeat, while individual entities constantly do.
+#
+# Entries carry a timestamp because enrichment copies the entity's label into the
+# served record; without expiry a renamed item would keep its old name for the
+# life of the process.
+LINK_CACHE_TTL_SECONDS = 3600
+LINK_CACHE_MAX_ENTRIES = 20000
+MW_IDS_PER_REQUEST = 50
+
+_link_cache: Dict[str, Any] = {}  # qid -> (fetched_at_monotonic, entity)
+
+
+def _link_cache_get(qid: str, now: float) -> Optional[Dict[str, Any]]:
+    """Return a cached entity if present and still fresh, else None."""
+    hit = _link_cache.get(qid)
+    if hit is None:
+        return None
+    fetched_at, entity = hit
+    if now - fetched_at > LINK_CACHE_TTL_SECONDS:
+        _link_cache.pop(qid, None)
+        return None
+    return entity
+
+
+def _link_cache_put(qid: str, entity: Dict[str, Any], now: float) -> None:
+    """Store an entity, evicting the oldest entries if the cache is full."""
+    if len(_link_cache) >= LINK_CACHE_MAX_ENTRIES and qid not in _link_cache:
+        for stale_qid in sorted(_link_cache, key=lambda k: _link_cache[k][0])[:LINK_CACHE_MAX_ENTRIES // 10]:
+            _link_cache.pop(stale_qid, None)
+    _link_cache[qid] = (now, entity)
+
+
+def clear_link_cache() -> None:
+    """Drop every cached linked entity. Used by tests."""
+    _link_cache.clear()
+
+
+def _request_entities(batch: List[str]) -> Dict[str, Any]:
+    """Fetch one batch of entities from the MediaWiki API.
+
+    Args:
+        batch: At most ``MW_IDS_PER_REQUEST`` QIDs.
+
+    Returns:
+        Mapping of QID to entity.
+
+    Raises:
+        Exception: Any transport or HTTP error, handled by the caller.
+    """
+    params = {
+        "action": "wbgetentities",
+        "format": "json",
+        "ids": "|".join(batch),
+        "props": "labels|claims",
+        "languages": "en",
+    }
+    resp = httpx.get(MW_API, params=params, timeout=5)
+    resp.raise_for_status()
+    return resp.json().get("entities", {})
+
+
+def fetch_entities(ids: List[str]) -> Dict[str, Any]:
+    """Resolve linked entities for reference enrichment.
+
+    Entities already cached and still fresh are reused; the rest are requested in
+    batches of ``MW_IDS_PER_REQUEST`` rather than one call per link.
+
+    A failed batch is logged and skipped - nothing negative is cached, so the
+    next request retries it. Callers receive only what resolved, and
+    ``schema_refs_from_ids`` degrades the remainder to bare ``@id`` references.
+
+    Args:
+        ids: QIDs to resolve.
+
+    Returns:
+        Mapping of QID to entity. Missing or failed lookups are simply absent.
+    """
+    now = time.monotonic()
+    unique = sorted(set(i for i in ids if i))
+    out: Dict[str, Any] = {}
+    missing: List[str] = []
+    for qid in unique:
+        cached = _link_cache_get(qid, now)
+        if cached is None:
+            missing.append(qid)
+        else:
+            out[qid] = cached
+
+    for start in range(0, len(missing), MW_IDS_PER_REQUEST):
+        batch = missing[start:start + MW_IDS_PER_REQUEST]
+        try:
+            entities = _request_entities(batch)
+        except Exception:
+            logger.warning("link enrichment lookup failed for %s", "|".join(batch))
+            continue
+        for qid, entity in entities.items():
+            if "missing" in entity:
+                continue
+            _link_cache_put(qid, entity, now)
+            out[qid] = entity
+    return out
+
+
 def guess_type_from_claims(claims: Dict[str, Any]) -> str:
     """Infer an approximate type for the entity from P31.
 
@@ -127,7 +233,9 @@ def to_fdo(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
 def to_fdo_publication(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     fdo_id = f"{FDO_IRI}{qid}"
     created, modified = normalize_created_modified(entity)
-    profile, pdf_url, has_components_at_storage = build_scholarly_article_profile(qid, entity)
+    profile, pdf_url, has_components_at_storage = build_scholarly_article_profile(
+        qid, entity, fetch_fn=fetch_entities
+    )
 
     kernel = {
         "@id": fdo_id,
@@ -249,7 +357,9 @@ def to_fdo_dataset(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         KeyError: If required fields are missing from the `entity`.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url, has_components_at_storage = build_dataset_profile(qid, entity)
+    profile, download_url, has_components_at_storage = build_dataset_profile(
+        qid, entity, fetch_fn=fetch_entities
+    )
 
     created, modified = normalize_created_modified(entity)
 
@@ -367,7 +477,9 @@ def to_fdo_workflow(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
             - Provenance markers for timestamp and attribution
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, has_components_at_storage = build_workflow_profile(qid, entity, fetch_fn=fetch_entity)
+    profile, has_components_at_storage = build_workflow_profile(
+        qid, entity, fetch_fn=fetch_entities
+    )
 
     created, modified = normalize_created_modified(entity)
 
@@ -468,7 +580,9 @@ def to_fdo_software_application(qid: str, entity: Dict[str, Any]) -> Dict[str, A
         KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url, has_components_at_storage = build_software_application_profile(qid, entity)
+    profile, download_url, has_components_at_storage = build_software_application_profile(
+        qid, entity, fetch_fn=fetch_entities
+    )
 
     created, modified = normalize_created_modified(entity)
 
@@ -542,7 +656,9 @@ def to_fdo_software_sourcecode(qid: str, entity: Dict[str, Any]) -> Dict[str, An
         KeyError: If mandatory fields are missing from ``entity``.
     """
     fdo_id = f"{FDO_IRI}{qid}"
-    profile, download_url, documentation_pdf_url, has_components_at_storage = build_software_sourcecode_profile(qid, entity)
+    profile, download_url, documentation_pdf_url, has_components_at_storage = build_software_sourcecode_profile(
+        qid, entity, fetch_fn=fetch_entities
+    )
 
     created, modified = normalize_created_modified(entity)
 

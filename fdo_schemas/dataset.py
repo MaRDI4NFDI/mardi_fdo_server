@@ -2,14 +2,18 @@
 Schema.org Dataset helpers for MaRDI FDO server.
 """
 import mimetypes
-from typing import Dict, Any, Tuple, Optional, List
+from typing import Callable, Dict, Any, Tuple, Optional, List
 
 from app.fdo_config import ENTITY_IRI, FDO_IRI
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
-    schema_refs_from_ids, extract_qualifiers_for_item
+    schema_refs_from_ids, refs_for_field, extract_qualifiers_for_item
 
 
-def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
+def build_dataset_profile(
+    qid: str,
+    entity: Dict[str, Any],
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+) -> Tuple[Dict[str, Any], Optional[str], Dict[str, Any]]:
     """
     Construct a minimal schema.org Dataset profile from MediaWiki claims.
 
@@ -19,6 +23,8 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
     Args:
         qid: PID/QID string.
         entity: Raw entity dict from the KG, including labels and claims.
+        fetch_fn: Optional batched lookup used to enrich the reference fields
+            fields whose propertyMappings entry declares "embed".
 
     Returns:
         Tuple containing:
@@ -140,6 +146,6 @@ def build_dataset_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, A
         profile["about"] = schema_refs_from_ids(community_ids)
 
     if described_by_ids:
-        profile["citation"] = schema_refs_from_ids(described_by_ids)
+        profile["citation"] = refs_for_field("Dataset", "citation", described_by_ids, fetch_fn)
 
     return profile, download_url, has_components_at_storage

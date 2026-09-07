@@ -2,7 +2,7 @@
 Schema.org SoftwareSourceCode helpers for MaRDI FDO server.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from app.fdo_config import FDO_IRI
 from app.mardi_item_helper import (
@@ -10,11 +10,15 @@ from app.mardi_item_helper import (
     extract_qualifiers_for_item,
     extract_string_claim,
     extract_time_claim,
-    schema_refs_from_ids,
+    schema_refs_from_ids, refs_for_field,
 )
 
 
-def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[str], Optional[str], Dict[str, Any]]:
+def build_software_sourcecode_profile(
+    qid: str,
+    entity: Dict[str, Any],
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+) -> Tuple[Dict[str, Any], Optional[str], Optional[str], Dict[str, Any]]:
     """Construct a minimal schema.org SoftwareSourceCode profile.
 
     Args:
@@ -93,7 +97,7 @@ def build_software_sourcecode_profile(qid: str, entity: Dict[str, Any]) -> Tuple
         profile.setdefault("sameAs", []).append(doi_url)
 
     if described_by_ids:
-        profile["citation"] = schema_refs_from_ids(described_by_ids)
+        profile["citation"] = refs_for_field("SoftwareSourceCode", "citation", described_by_ids, fetch_fn)
 
     storage_item_ids = extract_item_ids(claims, "P1827") or []
     has_components_at_storage: Dict[str, Any] = {}

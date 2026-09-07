@@ -2,9 +2,15 @@
 Helper utilities for extracting structured data from MaRDI/Wikibase entities.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from app.fdo_config import ENTITY_IRI
+from app.fdo_config import (
+    ENTITY_IRI,
+    MAX_ENRICHED_REFS,
+    QID_P1460_TYPE_MAP,
+    QID_P31_TYPE_MAP,
+    SCHEMA_TYPE_TO_TYPE_ID,
+)
 
 
 def extract_item_ids(claims: Dict[str, Any], prop: str) -> List[str]:
@@ -88,16 +94,117 @@ def extract_time_claim(claims: Dict[str, Any], prop: str) -> Optional[str]:
     return time_val
 
 
-def schema_refs_from_ids(ids: List[str]) -> List[Dict[str, str]]:
+def schema_type_short(entity: Dict[str, Any]) -> Optional[str]:
+    """Return the short schema type ID for an entity, from P31 or P1460.
+
+    Args:
+        entity: Raw entity dict from the KG, including claims.
+
+    Returns:
+        Short type ID such as ``Dataset``, or ``None`` if no mapping applies.
+    """
+    claims = entity.get("claims", {})
+    for prop, qid_map in (("P31", QID_P31_TYPE_MAP), ("P1460", QID_P1460_TYPE_MAP)):
+        for stmt in claims.get(prop, []):
+            qid = stmt.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id", "")
+            schema_type = qid_map.get(qid)
+            if schema_type:
+                return SCHEMA_TYPE_TO_TYPE_ID.get(schema_type)
+    return None
+
+
+def schema_refs_from_ids(
+    ids: List[str],
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+    embed: Tuple[str, ...] = ("@type", "name"),
+) -> List[Dict[str, str]]:
     """Return schema.org reference objects for a list of QIDs.
+
+    Without ``fetch_fn`` each reference is a bare ``{"@id": ...}``. With it, the
+    linked entities are resolved in one batched call and each reference also
+    carries the fields named in ``embed`` - ``@type`` (from P31/P1460) and
+    ``name`` (the English label).
+
+    Resolution is best-effort: if the lookup fails, or an entity is missing, or
+    no type mapping applies, the affected reference degrades to a bare ``@id``
+    rather than raising. At most ``MAX_ENRICHED_REFS`` references are enriched.
 
     Args:
         ids: List of QIDs.
+        fetch_fn: Optional batched lookup taking a list of QIDs and returning a
+            ``{qid: entity}`` mapping.
+        embed: Which extra fields to copy onto each reference.
 
     Returns:
-        List of dictionaries with ``@id`` references.
+        List of reference dictionaries, each with at least ``@id``.
     """
-    return [{"@id": ENTITY_IRI + _id} for _id in ids]
+    refs: List[Dict[str, str]] = [{"@id": ENTITY_IRI + _id} for _id in ids]
+    if fetch_fn is None or not ids or not embed:
+        return refs
+
+    to_resolve = list(dict.fromkeys(ids))[:MAX_ENRICHED_REFS]
+    try:
+        linked = fetch_fn(to_resolve) or {}
+    except Exception:  # never let enrichment turn a good record into an error
+        return refs
+
+    for _id, ref in zip(ids, refs):
+        entity = linked.get(_id)
+        if not entity:
+            continue
+        if "@type" in embed:
+            schema_type = schema_type_short(entity)
+            if schema_type:
+                ref["@type"] = schema_type
+        if "name" in embed:
+            name = entity.get("labels", {}).get("en", {}).get("value")
+            if name:
+                ref["name"] = name
+    return refs
+
+
+def embedded_fields(type_id: str, field: str) -> Tuple[str, ...]:
+    """Return the extra fields to embed on references of ``field``.
+
+    Reads the ``embed`` key of the field's propertyMappings entry in
+    TYPE_REGISTRY, so the type FDO a client retrieves and the record it receives
+    describe the same thing.
+
+    Args:
+        type_id: Short type ID, e.g. ``ScholarlyArticle``.
+        field: Profile field name, e.g. ``citation``.
+
+    Returns:
+        Tuple of field names such as ``("@type", "name")``; empty if the field
+        is not declared as enriched.
+    """
+    from app.type_registry import TYPE_REGISTRY
+
+    mapping = TYPE_REGISTRY.get(type_id, {}).get("propertyMappings", {}).get(field, {})
+    return tuple(mapping.get("embed", ()))
+
+
+def refs_for_field(
+    type_id: str,
+    field: str,
+    ids: List[str],
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
+) -> List[Dict[str, str]]:
+    """Return references for ``field``, enriched if its type declares ``embed``.
+
+    Args:
+        type_id: Short type ID of the record being built.
+        field: Profile field name, e.g. ``citation``.
+        ids: Linked QIDs.
+        fetch_fn: Batched entity lookup.
+
+    Returns:
+        List of reference dictionaries.
+    """
+    embed = embedded_fields(type_id, field)
+    if embed and fetch_fn is not None:
+        return schema_refs_from_ids(ids, fetch_fn=fetch_fn, embed=embed)
+    return schema_refs_from_ids(ids)
 
 
 def normalize_created_modified(entity: Dict[str, Any]) -> Tuple[Optional[str], str]:

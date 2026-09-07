@@ -247,26 +247,27 @@ def test_workflow_zenodo_same_as(mock_fetch):
     assert "https://zenodo.org/record/12345678" in same_as
 
 
+_LINKED_DATASET = {
+    "labels": {"en": {"value": "RKI covid case numbers"}},
+    "descriptions": {},
+    "claims": {
+        "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56885"}}}}]
+    },
+    "modified": "2026-01-01T00:00:00Z",
+}
+
+
+def _workflow_using_dataset():
+    return _workflow_entity_p31({
+        "P557": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q6830878"}}}}]
+    })
+
+
+@patch("app.mardi_fdo_server.fetch_entities", return_value={"Q6830878": _LINKED_DATASET})
 @patch("app.mardi_fdo_server.fetch_entity")
-def test_workflow_uses_enriched(mock_fetch):
+def test_workflow_uses_enriched(mock_fetch, mock_batch):
     """P557 (uses) appears in profile.uses with @type and name from the linked entity."""
-    linked_entity = {
-        "labels": {"en": {"value": "RKI covid case numbers"}},
-        "descriptions": {},
-        "claims": {
-            "P31": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q56885"}}}}]
-        },
-        "modified": "2026-01-01T00:00:00Z",
-    }
-
-    def _side_effect(qid):
-        if qid == "Q6830878":
-            return linked_entity
-        return _workflow_entity_p31({
-            "P557": [{"mainsnak": {"datavalue": {"type": "wikibase-entityid", "value": {"id": "Q6830878"}}}}]
-        })
-
-    mock_fetch.side_effect = _side_effect
+    mock_fetch.return_value = _workflow_using_dataset()
 
     resp = client.get("/fdo/Q9000012")
     assert resp.status_code == 200
@@ -276,6 +277,23 @@ def test_workflow_uses_enriched(mock_fetch):
     assert uses[0]["@id"] == "https://portal.mardi4nfdi.de/entity/Q6830878"
     assert uses[0].get("@type") == "Dataset"
     assert uses[0].get("name") == "RKI covid case numbers"
+
+    # One batched lookup for the whole field, not one per reference.
+    assert mock_batch.call_count == 1
+    assert mock_batch.call_args[0][0] == ["Q6830878"]
+
+
+@patch("app.mardi_fdo_server.fetch_entities", side_effect=RuntimeError("backend down"))
+@patch("app.mardi_fdo_server.fetch_entity")
+def test_workflow_uses_degrades_to_bare_ref(mock_fetch, _mock_batch):
+    """If the linked-entity lookup fails, references stay bare and the record still serves."""
+    mock_fetch.return_value = _workflow_using_dataset()
+
+    resp = client.get("/fdo/Q9000013")
+    assert resp.status_code == 200
+
+    uses = resp.json()["profile"].get("uses", [])
+    assert uses == [{"@id": "https://portal.mardi4nfdi.de/entity/Q6830878"}]
 
 
 @patch("app.mardi_fdo_server.fetch_entity")

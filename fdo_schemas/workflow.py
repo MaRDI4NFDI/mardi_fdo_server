@@ -4,26 +4,15 @@ Schema.org Workflow helpers for MaRDI FDO server.
 import mimetypes
 from typing import Any, Callable, Dict, Optional, Tuple, List
 
-from app.fdo_config import FDO_IRI, ENTITY_IRI, QID_P31_TYPE_MAP, QID_P1460_TYPE_MAP, SCHEMA_TYPE_TO_TYPE_ID
+from app.fdo_config import FDO_IRI
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
-    schema_refs_from_ids, extract_qualifiers_for_item
-
-
-def _schema_type_short(entity: Dict[str, Any]) -> Optional[str]:
-    claims = entity.get("claims", {})
-    for prop, qid_map in (("P31", QID_P31_TYPE_MAP), ("P1460", QID_P1460_TYPE_MAP)):
-        for stmt in claims.get(prop, []):
-            qid = stmt.get("mainsnak", {}).get("datavalue", {}).get("value", {}).get("id", "")
-            schema_type = qid_map.get(qid)
-            if schema_type:
-                return SCHEMA_TYPE_TO_TYPE_ID.get(schema_type)
-    return None
+    schema_refs_from_ids, refs_for_field, extract_qualifiers_for_item
 
 
 def build_workflow_profile(
     qid: str,
     entity: Dict[str, Any],
-    fetch_fn: Optional[Callable[[str], Dict[str, Any]]] = None,
+    fetch_fn: Optional[Callable[[List[str]], Dict[str, Dict[str, Any]]]] = None,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
     Construct a minimal schema.org Workflow profile from MediaWiki claims.
@@ -116,26 +105,9 @@ def build_workflow_profile(
         profile["description_long"] = description_long
 
     if described_by_ids:
-        profile["citation"] = schema_refs_from_ids(described_by_ids)
+        profile["citation"] = refs_for_field("Workflow", "citation", described_by_ids, fetch_fn)
 
     if uses_ids:
-        if fetch_fn is not None:
-            uses_entries = []
-            for uid in uses_ids:
-                entry: Dict[str, Any] = {"@id": ENTITY_IRI + uid}
-                try:
-                    linked = fetch_fn(uid)
-                    name = linked.get("labels", {}).get("en", {}).get("value")
-                    schema_type = _schema_type_short(linked)
-                    if schema_type:
-                        entry["@type"] = schema_type
-                    if name:
-                        entry["name"] = name
-                except Exception:
-                    pass
-                uses_entries.append(entry)
-            profile["uses"] = uses_entries
-        else:
-            profile["uses"] = schema_refs_from_ids(uses_ids)
+        profile["uses"] = refs_for_field("Workflow", "uses", uses_ids, fetch_fn)
 
     return profile, has_components_at_storage
