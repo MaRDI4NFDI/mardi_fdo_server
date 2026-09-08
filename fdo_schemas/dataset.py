@@ -4,7 +4,7 @@ Schema.org Dataset helpers for MaRDI FDO server.
 import mimetypes
 from typing import Callable, Dict, Any, Tuple, Optional, List
 
-from app.fdo_config import ENTITY_IRI, FDO_IRI
+from app.fdo_config import ENTITY_IRI, FDO_IRI, PROFILE_CONTEXT
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
     schema_refs_from_ids, refs_for_field, extract_qualifiers_for_item
 
@@ -54,14 +54,20 @@ def build_dataset_profile(
     zenodo_id = extract_string_claim(claims, "P227") or ""
     doi_value = extract_string_claim(claims, "P27") or ""
 
+    # P1459 "Description (long)" has no schema.org equivalent, so it is emitted
+    # under the MaRDI namespace rather than forced into description or abstract.
+    description_long = extract_string_claim(claims, "P1459") or ""
+
     profile = {
-        "@context": "https://schema.org/",
+        "@context": PROFILE_CONTEXT,
         "@type": "Dataset",
         "@id": f"{FDO_IRI}{qid}",
         "name": label,
         "description": description,
         "url": f"{FDO_IRI}{qid}",
     }
+    if description_long:
+        profile["mardi:descriptionLong"] = description_long
 
     if publication_date:
         profile["datePublished"] = publication_date

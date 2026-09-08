@@ -5,7 +5,7 @@ Schema.org Person helpers for MaRDI FDO prototype.
 
 from typing import Any, Dict, List, Optional
 
-from app.fdo_config import ENTITY_IRI
+from app.fdo_config import ENTITY_IRI, PROFILE_CONTEXT
 from app.mardi_item_helper import (
     extract_item_ids,
     extract_string_claim,
@@ -29,7 +29,7 @@ def build_author_payload(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     orcid = extract_string_claim(claims, "P20")         # ORCID iD
 
     author: Dict[str, Any] = {
-        "@context": "https://schema.org",
+        "@context": PROFILE_CONTEXT,
         "@type": "Person",
         "@id": ENTITY_IRI + qid,
         "name": label,

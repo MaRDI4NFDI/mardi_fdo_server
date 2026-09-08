@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, List, Optional
 
-from app.fdo_config import ENTITY_IRI, FDO_IRI
+from app.fdo_config import ENTITY_IRI, FDO_IRI, PROFILE_CONTEXT
 from app.mardi_item_helper import (
     extract_item_ids,
     extract_string_claim,
@@ -95,7 +95,7 @@ def build_formula_profile(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
     wikidata_qid = extract_string_claim(claims, "P12")
 
     profile: Dict[str, Any] = {
-        "@context": "https://schema.org/",
+        "@context": PROFILE_CONTEXT,
         "@type": "Formula",
         "@id": f"{FDO_IRI}{qid}",
         "name": label,
@@ -107,7 +107,7 @@ def build_formula_profile(qid: str, entity: Dict[str, Any]) -> Dict[str, Any]:
         profile["mathExpression"] = math_expression
 
     if description_long:
-        profile["description_long"] = description_long
+        profile["mardi:descriptionLong"] = description_long
 
     identifiers = []
     if dlmf_id:

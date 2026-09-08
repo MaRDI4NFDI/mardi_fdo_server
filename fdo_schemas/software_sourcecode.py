@@ -4,7 +4,7 @@ Schema.org SoftwareSourceCode helpers for MaRDI FDO server.
 
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from app.fdo_config import FDO_IRI
+from app.fdo_config import FDO_IRI, PROFILE_CONTEXT
 from app.mardi_item_helper import (
     extract_item_ids,
     extract_qualifiers_for_item,
@@ -49,14 +49,20 @@ def build_software_sourcecode_profile(
     cran_name = extract_string_claim(claims, "P229") or ""
     documentation_pdf_url = f"https://cran.r-project.org/web/packages/{cran_name}/{cran_name}.pdf" if cran_name else None
 
+    # P1459 "Description (long)" has no schema.org equivalent, so it is emitted
+    # under the MaRDI namespace rather than forced into description or abstract.
+    description_long = extract_string_claim(claims, "P1459") or ""
+
     profile: Dict[str, Any] = {
-        "@context": "https://schema.org/",
+        "@context": PROFILE_CONTEXT,
         "@type": "SoftwareSourceCode",
         "@id": f"{FDO_IRI}{qid}",
         "name": label,
         "description": description,
         "url": f"{FDO_IRI}{qid}",
     }
+    if description_long:
+        profile["mardi:descriptionLong"] = description_long
 
     if author_ids:
         profile["author"] = schema_refs_from_ids(author_ids)

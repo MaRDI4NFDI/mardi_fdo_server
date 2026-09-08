@@ -57,6 +57,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "0.MaRDI/Op.Invoke",
         ],
         "propertyMappings": {
+            "mardi:descriptionLong": {"pid": "P1459", "type": "string", "multi": False},
             "author":               {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":           {"pid": "P43",   "type": "string", "multi": False},
             "datePublished":        {"pid": "P28",   "type": "time",   "multi": False},
@@ -89,6 +90,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "0.MaRDI/Op.Purge",
         ],
         "propertyMappings": {
+            "mardi:descriptionLong": {"pid": "P1459", "type": "string", "multi": False},
             "author":         {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":     {"pid": "P43",   "type": "string", "multi": False},
             "datePublished":  {"pid": "P28",   "type": "time",   "multi": False},
@@ -120,7 +122,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "citation":          {"pid": "P286",  "type": "item",   "multi": True,  "note": "described by", "embed": ["@type", "name"]},
             "uses":              {"pid": "P557",  "type": "item",   "multi": True,  "note": "dataset or resource used by this workflow", "embed": ["@type", "name"]},
             "zenodoId":          {"pid": "P227",  "type": "string", "multi": False},
-            "description_long":  {"pid": "P1459", "type": "string", "multi": False},
+            "mardi:descriptionLong": {"pid": "P1459", "type": "string", "multi": False},
         },
     },
     "Person": {
@@ -150,6 +152,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "0.MaRDI/Op.Purge",
         ],
         "propertyMappings": {
+            "mardi:descriptionLong": {"pid": "P1459", "type": "string", "multi": False},
             "author":                           {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":                       {"pid": "P43",   "type": "string", "multi": False},
             "license":                          {"pid": "P163",  "type": "item",   "multi": True},
@@ -179,6 +182,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
             "0.MaRDI/Op.Purge",
         ],
         "propertyMappings": {
+            "mardi:descriptionLong": {"pid": "P1459", "type": "string", "multi": False},
             "author":              {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":          {"pid": "P43",   "type": "string", "multi": False},
             "license":             {"pid": "P163",  "type": "item",   "multi": True},
@@ -205,7 +209,7 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         ],
         "propertyMappings": {
             "mathExpression":          {"pid": "P989",  "type": "string", "multi": False, "note": "defining formula (math string); P14 used as fallback for DLMF-sourced items"},
-            "description_long":        {"pid": "P1459", "type": "string", "multi": False},
+            "mardi:descriptionLong":   {"pid": "P1459", "type": "string", "multi": False},
             "symbol":                  {"pid": "P983",  "type": "string", "multi": True,  "note": "symbol notation (math string); qualifier P984 for the concept it represents"},
             "definesSymbol":           {"pid": "P3",    "type": "item",   "multi": True},
             "identifier/dlmf":         {"pid": "P2",    "type": "string", "multi": False, "note": "DLMF equation ID"},

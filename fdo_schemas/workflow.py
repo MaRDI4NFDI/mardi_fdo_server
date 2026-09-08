@@ -4,7 +4,7 @@ Schema.org Workflow helpers for MaRDI FDO server.
 import mimetypes
 from typing import Any, Callable, Dict, Optional, Tuple, List
 
-from app.fdo_config import FDO_IRI
+from app.fdo_config import FDO_IRI, PROFILE_CONTEXT
 from app.mardi_item_helper import extract_time_claim, extract_string_claim, extract_item_ids, \
     schema_refs_from_ids, refs_for_field, extract_qualifiers_for_item
 
@@ -45,7 +45,7 @@ def build_workflow_profile(
     description_long = extract_string_claim(claims, "P1459") or ""
 
     profile = {
-        "@context": "https://schema.org/",
+        "@context": PROFILE_CONTEXT,
         "@type": "Workflow",
         "@id": f"{FDO_IRI}{qid}",
         "name": label,
@@ -102,7 +102,7 @@ def build_workflow_profile(
         profile.setdefault("sameAs", []).append(f"https://zenodo.org/record/{zenodo_id}")
 
     if description_long:
-        profile["description_long"] = description_long
+        profile["mardi:descriptionLong"] = description_long
 
     if described_by_ids:
         profile["citation"] = refs_for_field("Workflow", "citation", described_by_ids, fetch_fn)

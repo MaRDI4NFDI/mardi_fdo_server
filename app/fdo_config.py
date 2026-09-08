@@ -52,6 +52,22 @@ QID_P1460_TYPE_MAP = {
 # lookups (a heavily-cited article can list hundreds).
 MAX_ENRICHED_REFS = 50
 
+# Namespace for MaRDI-local vocabulary: concepts the knowledge graph carries that
+# have no schema.org equivalent. Terms defined here are emitted with the "mardi:"
+# prefix so a JSON-LD consumer sees a local extension rather than an undefined
+# schema.org term, which a conforming processor drops silently.
+MARDI_NS = "https://ns.portal.mardi4nfdi.de/"
+
+# Context for the profile block. schema.org supplies the standard terms; the
+# second entry declares the MaRDI namespace for the rest.
+#
+# All seven profile builders share this. Previously each hardcoded the schema.org
+# IRI as a bare string, two of them without the trailing slash.
+PROFILE_CONTEXT = [
+    "https://schema.org/",
+    {"mardi": MARDI_NS},
+]
+
 # JSON-LD Context definition for FDO payloads.
 JSONLD_CONTEXT = [
     "https://w3id.org/fdo/context/v1",
