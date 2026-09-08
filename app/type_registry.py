@@ -18,6 +18,27 @@ Mapping fields:
   embed — for "item" mappings: the extra fields the server resolves onto each
           reference, alongside its "@id". Absent means references are exported
           as bare {"@id": ...} and a client must dereference them itself.
+
+applicableOperations declares which DOIP operations are meaningful for objects of
+this type. It is a statement about the TYPE, not a promise by any one server:
+
+  - Object FDOs never carry an operations list. They carry
+    kernel.digitalObjectType, and a client follows that pointer - the same
+    indirection already used for propertyMappings.
+  - A DOIP service answering ListOperations intersects this list with the
+    operations it actually implements, so a service that implements fewer than
+    the type declares simply advertises fewer. Over-declaring here is therefore
+    safe, and adoption by another deployment is a subset relationship.
+  - DOIP v2.0 Appendix D: "each DO specifies its type, and that type shall
+    inform DOIP services what operations to perform. Clients shall learn of
+    those applicable operations from DOIP services."
+
+Identifiers use the DOIP namespace (0.DOIP/Op.*) for operations defined by the
+specification and 0.MaRDI/Op.* for MaRDI extensions.
+
+Only operations invoked ON an object appear here. Hello, ListOperations, Create
+and Search address the service itself, not a digital object, so they are
+service-level and are reported by ListOperations when no target is given.
 """
 
 from typing import Any, Dict
@@ -27,6 +48,14 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Scholarly Article",
         "description": "A peer-reviewed academic publication in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/ScholarlyArticle",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+            # equation_extraction reads primary.pdf, so it is article-specific.
+            "0.MaRDI/Op.Invoke",
+        ],
         "propertyMappings": {
             "author":               {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":           {"pid": "P43",   "type": "string", "multi": False},
@@ -53,6 +82,12 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Dataset",
         "description": "A dataset in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/Dataset",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+        ],
         "propertyMappings": {
             "author":         {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":     {"pid": "P43",   "type": "string", "multi": False},
@@ -71,6 +106,12 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Workflow",
         "description": "A computational workflow in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/Workflow",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+        ],
         "propertyMappings": {
             "author":            {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":        {"pid": "P43",   "type": "string", "multi": False},
@@ -86,6 +127,12 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Person",
         "description": "A researcher or contributor in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/Person",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+        ],
         "propertyMappings": {
             "affiliation": {"pid": "P17", "type": "item",   "multi": True},
             "url":         {"pid": "P29", "type": "url",    "multi": False},
@@ -96,6 +143,12 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Software Application",
         "description": "A software application in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/SoftwareApplication",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+        ],
         "propertyMappings": {
             "author":                           {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":                       {"pid": "P43",   "type": "string", "multi": False},
@@ -119,6 +172,12 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Software Source Code",
         "description": "Software source code in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/SoftwareSourceCode",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+        ],
         "propertyMappings": {
             "author":              {"pid": "P16",   "type": "item",   "multi": True},
             "authorName":          {"pid": "P43",   "type": "string", "multi": False},
@@ -138,6 +197,12 @@ TYPE_REGISTRY: Dict[str, Dict[str, Any]] = {
         "label": "Formula",
         "description": "A mathematical formula in the MaRDI knowledge graph.",
         "seeAlso": "https://schema.org/Formula",
+        "applicableOperations": [
+            "0.DOIP/Op.Retrieve",
+            "0.DOIP/Op.Update",
+            "0.MaRDI/Op.Describe",
+            "0.MaRDI/Op.Purge",
+        ],
         "propertyMappings": {
             "mathExpression":          {"pid": "P989",  "type": "string", "multi": False, "note": "defining formula (math string); P14 used as fallback for DLMF-sourced items"},
             "description_long":        {"pid": "P1459", "type": "string", "multi": False},

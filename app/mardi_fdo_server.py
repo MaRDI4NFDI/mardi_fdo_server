@@ -862,6 +862,12 @@ def get_fdo_type(type_id: str):
     The returned document contains ``propertyMappings``, a machine-readable
     table mapping Schema.org field names to Wikibase P-IDs. Clients use this
     to translate field names into the P-ID keys expected by the UPDATE handler.
+
+    It also contains ``applicableOperations``: the DOIP operations meaningful
+    for objects of this type. That is a statement about the type, not a promise
+    by any one server - a DOIP service intersects it with what it implements
+    before answering ListOperations. Object FDOs carry no operations list; they
+    carry ``kernel.digitalObjectType`` and a client follows that pointer here.
     """
     if type_id not in TYPE_REGISTRY:
         raise HTTPException(status_code=404, detail=f"Type '{type_id}' not found in MaRDI type registry")
@@ -890,6 +896,7 @@ def get_fdo_type(type_id: str):
         "label": entry["label"],
         "description": entry["description"],
         "seeAlso": entry["seeAlso"],
+        "applicableOperations": entry.get("applicableOperations", []),
         "propertyMappings": entry["propertyMappings"],
     }
 
